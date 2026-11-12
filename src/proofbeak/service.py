@@ -15,11 +15,10 @@ from pathlib import Path
 from threading import Event, Thread
 from uuid import uuid4
 
-from proofbeak.engine import recover_cleanup, run_trial
+from proofbeak.executor import SubprocessExecutor
 from proofbeak.models import canonical, fingerprint
 from proofbeak.observer import OBSERVER_VERSION
 from proofbeak.packs import builtins
-from proofbeak.store import Store
 
 
 class ServiceError(Exception):
@@ -36,7 +35,7 @@ class Tenant:
 
 
 class TrialService:
-    def __init__(self, root, tenants, pending_limit=8):
+    def __init__(self, root, tenants, pending_limit=8, executor=None):
         self.root = Path(root).resolve()
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         if self.root.stat().st_mode & 0o077:
@@ -54,6 +53,7 @@ class TrialService:
         if type(pending_limit) is not int or not 1 <= pending_limit <= 100:
             raise ValueError("pending_limit must be between one and 100")
         self.pending_limit = pending_limit
+        self.executor = executor or SubprocessExecutor()
         self.database = self.root / "queue.sqlite3"
         self.lock = None
         self.worker = None
@@ -92,6 +92,7 @@ class TrialService:
             db.execute("UPDATE jobs SET state='interrupted', reason='recovery_required' "
                        "WHERE state='running'")
         self.stop.clear()
+        self.executor.reset()
         if background:
             self.worker = Thread(target=self._loop, name="proofbeak-worker", daemon=False)
             self.worker.start()
@@ -99,8 +100,9 @@ class TrialService:
     def close(self):
         self.stop.set()
         self.wake.set()
+        self.executor.cancel_all()
         if self.worker:
-            self.worker.join(timeout=30)
+            self.worker.join(timeout=5)
             if self.worker.is_alive():
                 raise RuntimeError("worker is still draining; exclusive ownership retained")
             self.worker = None
@@ -142,7 +144,12 @@ class TrialService:
         adapters = self._adapters(tenant, candidates)
         if any(pack.id not in a.supported_trials for a in adapters):
             raise ServiceError("unsupported_trial_for_provider", 422)
+        try:
+            self.executor.validate(adapters)
+        except ValueError:
+            raise ServiceError("unsupported_worker_adapter", 422) from None
         return {"pack_id": pack.id, "pack_version": pack.version,
+                "executor": self.executor.context(),
                 "observer_version": OBSERVER_VERSION,
                 "providers": [{"name": a.name, "version": a.version, "profile": a.profile,
                                "evidence_level": a.evidence_level} for a in adapters]}
@@ -230,18 +237,28 @@ class TrialService:
         if ledger.exists():
             request = json.loads(row["request"])
             adapters = self._adapters(tenant, request["candidates"])
-            try:
-                store = Store(ledger)
-            except ValueError:
-                raise ServiceError("run_still_active", 409) from None
-            try:
-                outcomes = recover_cleanup(store, adapters)
-            finally:
-                store.close()
+            result = self.executor.cleanup(adapters, ledger)
+            if result.reason:
+                code = "cleanup_timed_out" if result.reason == "trial_timed_out" else result.reason
+                status = 409 if code == "run_still_active" else (429 if code == "cleanup_busy" else 504)
+                raise ServiceError(code, status)
+            outcomes = result.payload["outcomes"]
         with self._db() as db:
             db.execute("UPDATE jobs SET recovery=? WHERE id=? AND tenant=?",
                        (canonical(outcomes), run_id, tenant))
         return {"run_id": run_id, "cleanup_recovery": outcomes}
+
+    def cancel(self, tenant, run_id):
+        self._row(tenant, run_id)
+        with self._db() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT state FROM jobs WHERE tenant=? AND id=?", (tenant, run_id)).fetchone()
+            if row["state"] == "queued":
+                db.execute("UPDATE jobs SET state='cancelled', reason='worker_cancelled' WHERE id=?",
+                           (run_id,))
+            elif row["state"] == "running":
+                self.executor.cancel(run_id)
+        return self.get_run(tenant, run_id)
 
     def packs(self, tenant):
         if tenant not in self.tenants:
@@ -272,13 +289,13 @@ class TrialService:
             if fingerprint(context) != fingerprint(json.loads(row["context"])):
                 raise ServiceError("execution_context_changed", 409)
             adapters = self._adapters(row["tenant"], request["candidates"])
-            store = Store(self.root / "ledgers" / f'{row["id"]}.sqlite3')
-            try:
-                report = run_trial(request["test"], adapters, store, row["id"])
-            finally:
-                store.close()
-            report["execution_run_id"] = report["run_id"]
-            report["run_id"] = row["id"]
+            result = self.executor.run(request["test"], adapters,
+                self.root / "ledgers" / f'{row["id"]}.sqlite3', row["id"])
+            reason = result.reason
+            if result.payload:
+                report = result.payload["report"]
+                report["execution_run_id"] = report["run_id"]
+                report["run_id"] = row["id"]
         except ServiceError as exc:
             reason = exc.code
         except Exception:
@@ -286,7 +303,8 @@ class TrialService:
             reason = "execution_interrupted"
         with self._db() as db:
             db.execute("UPDATE jobs SET state=?, result=?, reason=? WHERE id=?", (
-                "completed" if report else "interrupted", canonical(report) if report else None,
+                "completed" if report else ("cancelled" if reason == "worker_cancelled" else "interrupted"),
+                canonical(report) if report else None,
                 reason, row["id"]))
         return True
 

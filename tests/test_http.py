@@ -8,6 +8,8 @@ import unittest
 from pathlib import Path
 
 from proofbeak.adapters.filesystem import FilesystemAdapter
+from proofbeak.adapters.simulation import SimulationAdapter
+from proofbeak.executor import SubprocessExecutor, WorkerLimits
 from proofbeak.service import Tenant, TrialService
 
 AVAILABLE = all(importlib.util.find_spec(name) for name in ("fastapi", "httpx"))
@@ -64,6 +66,14 @@ class HttpTests(unittest.TestCase):
         for route in [f"/runs/{run_id}", f"/runs/{run_id}/comparison", f"/evidence/{run_id}:0"]:
             self.assertEqual(self.client.get(route, headers=self.headers("b")).status_code, 404)
         self.assertEqual(self.client.post(f"/runs/{run_id}/cleanup", headers=self.headers("b")).status_code, 404)
+        self.assertEqual(self.client.post(f"/runs/{run_id}/cancel", headers=self.headers("b")).status_code, 404)
+
+    def test_queued_run_can_be_cancelled_without_execution(self):
+        run_id = self.submit()
+        response = self.client.post(f"/runs/{run_id}/cancel", headers=self.headers())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["state"], "cancelled")
+        self.assertFalse(self.service.process_next())
 
     def test_client_cannot_select_tenant_or_provider_credentials(self):
         for extra in [{"tenant_id": "b"}, {"profile": {"endpoint": "https://example.test"}},
@@ -117,6 +127,36 @@ class HttpTests(unittest.TestCase):
                     break
                 time.sleep(0.01)
             self.assertEqual(run["state"], "completed")
+
+    def test_hung_worker_does_not_block_api_or_the_next_job(self):
+        from fastapi.testclient import TestClient
+
+        from proofbeak.interfaces.http import create_app
+
+        tenant = Tenant("a", hashlib.sha256(self.tokens["a"].encode()).hexdigest(), {
+            "simulation:hang": lambda: SimulationAdapter("hang"),
+            "filesystem": self.service.tenants["a"].providers["filesystem"]})
+        service = TrialService(self.service.root.parent / "bounded-server", [tenant],
+                               executor=SubprocessExecutor(WorkerLimits(wall_seconds=2)))
+        calendar = json.loads((SPEC.parent / "calendar.move_one.v1.json").read_text())
+        with TestClient(create_app(service)) as client:
+            first = client.post("/runs", json={"test": calendar, "candidates": ["simulation:hang"]},
+                                headers=self.headers(key="hung")).json()["run_id"]
+            second = client.post("/runs", json={"test": self.spec, "candidates": ["filesystem"]},
+                                 headers=self.headers(key="following")).json()["run_id"]
+            started = time.monotonic()
+            self.assertEqual(client.get("/health").status_code, 200)
+            self.assertLess(time.monotonic() - started, 1)
+            deadline = time.monotonic() + 8
+            while time.monotonic() < deadline:
+                done = client.get(f"/runs/{second}", headers=self.headers()).json()
+                if done["state"] == "completed":
+                    break
+                time.sleep(.02)
+            self.assertEqual(done["state"], "completed")
+            interrupted = client.get(f"/runs/{first}", headers=self.headers()).json()
+            self.assertEqual(interrupted["reason_code"], "trial_timed_out")
+            self.assertEqual(interrupted["candidates"], [])
 
 
 if __name__ == "__main__":

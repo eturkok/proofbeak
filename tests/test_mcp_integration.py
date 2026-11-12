@@ -74,7 +74,7 @@ class McpIntegrationTests(unittest.TestCase):
                 listing = await session.list_tools()
                 tools = {tool.name: tool for tool in listing.tools}
                 self.assertEqual(set(tools), {"list_trial_packs", "run_trial", "get_run",
-                                             "compare_results", "get_evidence", "retry_cleanup"})
+                                             "compare_results", "get_evidence", "retry_cleanup", "cancel_run"})
                 self.assertNotIn("tenant_id", tools["run_trial"].inputSchema["properties"])
                 self.assertTrue(all(tool.outputSchema is not None for tool in tools.values()))
                 packs = await session.call_tool("list_trial_packs", {})

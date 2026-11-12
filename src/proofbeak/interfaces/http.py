@@ -99,4 +99,8 @@ def create_app(service: TrialService, background=True):
     def cleanup(run_id: str, owner: str = Depends(tenant)):
         return service.cleanup(owner, run_id)
 
+    @app.post("/runs/{run_id}/cancel")
+    def cancel(run_id: str, owner: str = Depends(tenant)):
+        return service.cancel(owner, run_id)
+
     return app

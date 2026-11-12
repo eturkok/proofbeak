@@ -114,6 +114,11 @@ def create_server(client):
         """Retry cleanup of this completed/interrupted trial's owned disposable resources only."""
         return call("POST", client.run_path(run_id) + "/cleanup")
 
+    @server.tool(annotations=write, structured_output=True)
+    def cancel_run(run_id: str) -> dict[str, Any]:
+        """Cancel this tenant's queued or executing run; never replay its writes."""
+        return call("POST", client.run_path(run_id) + "/cancel")
+
     return server
 
 

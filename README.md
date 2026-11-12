@@ -194,8 +194,9 @@ proofbeak-server serve
 
 Supply the one-time issued API key to your client/MCP host locally. See
 [agent interface setup, tools, and recovery](docs/agent-interfaces.md). The built-in launcher
-is a loopback-only, single-worker prototype; production worker/network isolation is still
-pending. Core CLI usage remains dependency-free.
+is a loopback-only prototype with bounded worker subprocesses, cancellation, and crash recovery.
+See [worker lifecycle and limits](docs/worker-processes.md). Container/network isolation and
+production identity remain pending. Core CLI usage remains dependency-free.
 
 ## Next increments
 

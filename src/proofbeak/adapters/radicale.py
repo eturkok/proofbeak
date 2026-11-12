@@ -40,6 +40,7 @@ class RadicaleAdapter:
             raise ValueError("a simple dedicated test username and password are required")
         self.endpoint = endpoint.rstrip("/")
         self.username = username
+        self._password = password
         self.transport = transport or Transport()
         token = base64.b64encode(f"{username}:{password}".encode()).decode()
         self.headers = {"Authorization": f"Basic {token}"}

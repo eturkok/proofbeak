@@ -41,7 +41,9 @@ not recorded development time. Weekly availability and external-account access s
 - [x] Expose structured run, comparison, evidence, and cleanup tools over MCP stdio.
 - [x] Stop interrupted jobs from being replayed after a worker restart.
 - [x] Implement real REST/MCP protocol integration checks and make them mandatory in CI.
-- [ ] Add separate isolated workers, remote identity, hard deadlines, and production data controls.
+- [x] Run trials and cleanup in separate bounded processes with independent deadlines.
+- [x] Terminate orphan workers and support tenant-bound cancellation without replaying writes.
+- [ ] Add container/network isolation, remote identity, and production data controls.
 
 Do not claim a passing real provider or cross-provider comparison from simulation controls.
 Do not build the public hub, pricing, generic natural-language compiler, or multi-DC deployment

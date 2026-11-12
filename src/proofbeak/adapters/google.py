@@ -39,6 +39,7 @@ class GoogleCalendarAdapter:
         if not isinstance(test_account, str) or not re.fullmatch(r"[^\s@]+@[^\s@]+", test_account):
             raise ValueError("configure the dedicated Google test-account email")
         self.account = test_account.lower()
+        self._access_token = access_token
         self.headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
         self.transport = transport or Transport()
         if transport is not None:

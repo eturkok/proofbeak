@@ -2,18 +2,20 @@
 
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+import os
+from threading import Event
 
 from proofbeak.adapters.base import ProviderError, Resource
 from proofbeak.packs.calendar import Snapshot, Trial
 
 
 class SimulationAdapter:
-    version = "0.2.0"
+    version = "0.3.0"
     supported_trials = frozenset({"calendar.move_one.v1"})
     evidence_level = "simulation"
 
     def __init__(self, mode: str = "correct"):
-        if mode not in {"correct", "move_all", "duplicate", "permission_denied", "timeout"}:
+        if mode not in {"correct", "move_all", "duplicate", "permission_denied", "timeout", "hang", "crash"}:
             raise ValueError("unknown simulation mode")
         self.mode = mode
         self.name = f"simulation:{mode}"
@@ -37,6 +39,10 @@ class SimulationAdapter:
         return Snapshot(list(self.events[resource.id]), self.name, datetime.now(UTC).isoformat())
 
     def apply(self, resource: Resource, trial: Trial) -> None:
+        if self.mode == "hang":
+            Event().wait(3600)
+        if self.mode == "crash":
+            os._exit(23)
         if self.mode == "timeout":
             raise ProviderError("write_outcome_unknown")
         events = self.events[resource.id]

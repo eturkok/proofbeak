@@ -13,6 +13,7 @@ from proofbeak.adapters.google import GoogleCalendarAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.models import keys
+from proofbeak.executor import SubprocessExecutor, WorkerLimits
 from proofbeak.service import Tenant, TrialService
 
 
@@ -41,7 +42,8 @@ def load_service(config_path):
     if path.stat().st_size > 65536:
         raise ValueError("server configuration exceeds 64 KiB")
     config = json.loads(path.read_text())
-    keys(config, {"state_dir", "tenants"}, "server configuration")
+    keys(config, {"state_dir", "tenants"} | ({"execution"} if "execution" in config else set()),
+         "server configuration")
     root = Path(config["state_dir"]).resolve()
     tenants = []
     for entry in config["tenants"]:
@@ -51,7 +53,8 @@ def load_service(config_path):
         providers = {name: provider_factory(name, settings, root, entry["id"])
                      for name, settings in entry["providers"].items()}
         tenants.append(Tenant(entry["id"], entry["token_sha256"], providers))
-    return TrialService(root, tenants)
+    limits = WorkerLimits(**config.get("execution", {}))
+    return TrialService(root, tenants, executor=SubprocessExecutor(limits))
 
 
 def main(argv=None):

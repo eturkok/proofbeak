@@ -18,7 +18,8 @@ configuration file stores only its SHA-256, is created with mode 0600, and is ne
 The state directory must be private to its owner (0700). Keep the configuration and state
 outside version control. Neither CLI core nor the server requires an external LLM.
 
-The server binds to `127.0.0.1`, runs one process, and starts one embedded worker. All data
+The server binds to `127.0.0.1` and starts one scheduling coordinator. Trial and cleanup work
+run in bounded subprocesses, described in [worker processes](worker-processes.md). All data
 routes require `Authorization: Bearer <tenant-key>`. `/health` exposes readiness only. API
 documentation and schema routes are disabled. For remote deployments, terminate TLS and
 apply network controls outside this local prototype; the built-in launcher does not expose
@@ -34,6 +35,7 @@ a public listener.
 | `GET /runs/{id}/comparison` | Read conditions and provenance after completion; raw observations are referenced separately. |
 | `GET /evidence/{id}` | Read the authorized candidate's before/after observations and integrity hash. |
 | `POST /runs/{id}/cleanup` | Retry only recorded cleanup on a terminal run; never rerun trial writes. |
+| `POST /runs/{id}/cancel` | Cancel a queued or running tenant-owned job without replaying its writes. |
 
 `POST /runs` takes exactly `test` and `candidates`, with `Idempotency-Key` in the header.
 No tenant ID, provider URL, credential, shell command, or arbitrary profile is accepted from
@@ -72,8 +74,8 @@ Configure the MCP host to run `proofbeak-mcp` with `PROOFBEAK_API_URL` (default
 `http://127.0.0.1:8765`) and `PROOFBEAK_API_TOKEN` supplied through its local secret/environment
 mechanism. The token binds this bridge process to one tenant. It is not a tool argument.
 
-The six tools are `list_trial_packs`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
-and `retry_cleanup`. Typed tool definitions publish output schemas and return structured JSON.
+The seven tools are `list_trial_packs`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
+`retry_cleanup`, and `cancel_run`. Typed tools publish output schemas and return structured JSON.
 Discovery supplies example trials so the agent can form a valid request without another
 documentation lookup. Discovery and reads are
 annotated read-only. Trial creation and cleanup are explicit writes; they are never hidden
@@ -88,7 +90,7 @@ migration is a separate dependency change.
 ## Durable queue and recovery
 
 Accepted jobs are committed to `queue.sqlite3` before returning 202. The embedded worker
-claims one queued job transactionally and records a separate trial resource ledger under
+claims one queued job transactionally and dispatches it to a subprocess, which records a resource ledger under
 `ledgers/{public-run-id}.sqlite3`. The public run ID is stable across the REST and MCP
 interfaces; `execution_run_id` identifies the internal trial run.
 
@@ -99,15 +101,13 @@ cleanup route/tool to reconcile the recorded disposable resources. Cleanup progr
 returned in `cleanup_recovery`; historical trial observations are not rewritten. A missing
 or ambiguous provider resource stays unresolved when its ownership/state cannot be proven.
 
-Pending context is revalidated before execution. Package or provider-profile drift stops the
-job without making a new provider write. Graceful shutdown drains the current trial; if the
-worker has not finished after its join budget, it retains exclusive ownership instead of
-starting another worker over the same state.
+Pending context is revalidated before execution. Package, provider-profile, or executor-policy drift stops the
+job without making a new provider write. Shutdown terminates owned workers and preserves
+cleanup intent; if the coordinator has not finished, it retains exclusive ownership.
 
-This is a local embedded-worker implementation. API-key tenant checks are logical access
-controls, not process or network isolation between provider adapters. It is not yet a shared
-production service: separate worker processes, hard wall-clock deadlines, SSO/OAuth for
-remote clients, audit/retention jobs, and production egress/secret controls remain pilot work.
+API-key tenant checks are logical access controls. Worker processes and wall-clock deadlines
+bound execution, while container/network isolation, SSO/OAuth for remote clients, audit/retention
+jobs, and production egress/secret controls remain pilot work.
 
 ## Operator provider configuration
 
