@@ -30,7 +30,8 @@ not recorded development time. Weekly availability and external-account access s
 - [x] Bind package version and adapter compatibility before reservation.
 - [x] Run a second package against actual disposable filesystem resources.
 - [x] Preserve cleanup deserialization for the original resource ledger.
-- [ ] Add Google Calendar as another adapter for the unchanged calendar package.
+- [x] Add a protocol-tested Google adapter for the unchanged calendar package.
+- [ ] Verify it on a dedicated real Google account and preserve cross-provider evidence.
 
 Do not claim a passing real provider or cross-provider comparison from simulation controls.
 Do not build the public hub, pricing, generic natural-language compiler, or multi-DC deployment

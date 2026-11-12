@@ -9,7 +9,8 @@ def equal(expected, actual):
     if isinstance(expected, bool) or isinstance(actual, bool):
         return type(expected) is type(actual) and expected == actual
     if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
-        return math.isfinite(expected) and math.isfinite(actual) and expected == actual
+        finite = lambda value: not isinstance(value, float) or math.isfinite(value)
+        return finite(expected) and finite(actual) and expected == actual
     if type(expected) is not type(actual):
         return False
     if isinstance(expected, list):

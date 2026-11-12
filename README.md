@@ -39,7 +39,7 @@ before a run or a resource is created.
 
 | Package | Acceptance condition | Available adapters |
 | --- | --- | --- |
-| `calendar.move_one.v1` | Move one weekly occurrence while preserving the other instances and durations. | Radicale; labeled simulation controls |
+| `calendar.move_one.v1` | Move one weekly occurrence while preserving the other instances and durations. | Radicale; Google adapter awaiting live verification; labeled simulation controls |
 | `storage.put_same_key.v1` | Repeating a write to the same key preserves one object and the same content. | Real local filesystem reference adapter |
 
 ```bash
@@ -54,6 +54,33 @@ reads actual directory entries and file contents before cleanup. It demonstrates
 domain using the same worker; its result describes this local adapter and filesystem,
 not a remote object store such as S3. `PROOFBEAK_FILESYSTEM_ROOT` can configure the test root.
 Read [the package contract](docs/trial-packs.md) to extend the built-in registry.
+
+## Google Calendar adapter
+
+The Google adapter implements the same calendar package with a generated secondary calendar,
+independent expanded-event reads, ETag-protected instance updates, and ownership-checked
+cleanup. It is protocol-tested with an injected transport; a real Google account trial has
+not been run yet. Injected transports are marked as simulation evidence.
+
+After configuring a short-lived OAuth token and a separate test account in your local
+environment, check identity without creating anything:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak google-preflight
+```
+
+To run the same fixture against both providers once their test-account access is available:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak run examples/calendar.move_one.v1.json \
+  --candidate radicale --candidate google-calendar --key calendar-comparison-1 \
+  --output reports/comparison.json --html reports/comparison.html
+```
+
+The CLI never writes to a primary calendar or sends participant invitations. See
+[Google account setup and live verification](docs/google-calendar.md); do not send tokens
+in chat or commit them. The `.env.example` file documents variables but is not loaded by
+the CLI automatically. Core CI has no Google credentials and never invokes a live Google trial.
 
 ## Run the offline controls
 
@@ -155,8 +182,8 @@ artifact; the records contain synthetic calendar data and no account password.
 
 ## Next increments
 
-1. Preserve the passing real Radicale trial and verify Google Calendar test-account access.
-2. Implement and compare the Google adapter using the identical fixture and observer.
+1. Run the implemented Google adapter against a dedicated test account.
+2. Preserve the first actual Google/Radicale comparison under the identical fixture and package.
 3. Add FastAPI/Pydantic REST and MCP interfaces around the same execution service, with
    tenant-bound authorization and asynchronous run tracking.
 4. Validate real selection decisions with pilot developers before building the private hub.

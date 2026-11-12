@@ -8,6 +8,7 @@ from pathlib import Path
 
 from proofbeak import __version__
 from proofbeak.adapters.filesystem import FilesystemAdapter
+from proofbeak.adapters.google import GoogleCalendarAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.engine import recover_cleanup, run_trial
@@ -22,6 +23,10 @@ def adapters_for(names):
         if name == "filesystem":
             result.append(FilesystemAdapter(os.environ.get(
                 "PROOFBEAK_FILESYSTEM_ROOT", ".proofbeak/storage")))
+        elif name == "google-calendar":
+            result.append(GoogleCalendarAdapter(
+                os.environ.get("PROOFBEAK_GOOGLE_ACCESS_TOKEN", ""),
+                os.environ.get("PROOFBEAK_GOOGLE_TEST_ACCOUNT", "")))
         elif name == "radicale":
             result.append(RadicaleAdapter(
                 os.environ.get("PROOFBEAK_RADICALE_URL", "http://127.0.0.1:5232"),
@@ -30,7 +35,7 @@ def adapters_for(names):
         elif name.startswith("simulation:"):
             result.append(SimulationAdapter(name.split(":", 1)[1]))
         else:
-            raise ValueError("unknown candidate; choose filesystem, radicale, or simulation:<mode>")
+            raise ValueError("unknown candidate; choose filesystem, radicale, google-calendar, or simulation:<mode>")
     return result
 
 
@@ -39,6 +44,7 @@ def main(argv=None):
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("packs", help="list registered trial packages and versions")
+    commands.add_parser("google-preflight", help="read-only Google test-account identity check")
     validate = commands.add_parser("validate", help="validate a closed trial definition")
     validate.add_argument("spec", type=Path)
     run = commands.add_parser("run", help="run a local acceptance trial")
@@ -57,6 +63,15 @@ def main(argv=None):
         if args.command == "packs":
             print(json.dumps(builtins().describe(), indent=2))
             return 0
+        if args.command == "google-preflight":
+            from proofbeak.adapters.base import ProviderError
+
+            try:
+                print(json.dumps(adapters_for(["google-calendar"])[0].preflight(), indent=2))
+                return 0
+            except ProviderError as exc:
+                print(f"Inconclusive: {exc.reason}", file=sys.stderr)
+                return 2
         if args.command == "cleanup":
             adapters = adapters_for(args.candidate)
             store = Store(args.db)
