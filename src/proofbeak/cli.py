@@ -7,10 +7,11 @@ import sys
 from pathlib import Path
 
 from proofbeak import __version__
+from proofbeak.adapters.filesystem import FilesystemAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.engine import recover_cleanup, run_trial
-from proofbeak.models import Trial
+from proofbeak.packs import builtins
 from proofbeak.report import render_html
 from proofbeak.store import IdempotencyConflict, Store
 
@@ -18,7 +19,10 @@ from proofbeak.store import IdempotencyConflict, Store
 def adapters_for(names):
     result = []
     for name in names:
-        if name == "radicale":
+        if name == "filesystem":
+            result.append(FilesystemAdapter(os.environ.get(
+                "PROOFBEAK_FILESYSTEM_ROOT", ".proofbeak/storage")))
+        elif name == "radicale":
             result.append(RadicaleAdapter(
                 os.environ.get("PROOFBEAK_RADICALE_URL", "http://127.0.0.1:5232"),
                 os.environ.get("PROOFBEAK_RADICALE_USERNAME", "proofbeak"),
@@ -26,7 +30,7 @@ def adapters_for(names):
         elif name.startswith("simulation:"):
             result.append(SimulationAdapter(name.split(":", 1)[1]))
         else:
-            raise ValueError("unknown candidate; choose radicale or simulation:<mode>")
+            raise ValueError("unknown candidate; choose filesystem, radicale, or simulation:<mode>")
     return result
 
 
@@ -34,6 +38,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="proofbeak", description="Try before agents choose.")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("packs", help="list registered trial packages and versions")
     validate = commands.add_parser("validate", help="validate a closed trial definition")
     validate.add_argument("spec", type=Path)
     run = commands.add_parser("run", help="run a local acceptance trial")
@@ -49,6 +54,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     store = None
     try:
+        if args.command == "packs":
+            print(json.dumps(builtins().describe(), indent=2))
+            return 0
         if args.command == "cleanup":
             adapters = adapters_for(args.candidate)
             store = Store(args.db)
@@ -58,10 +66,9 @@ def main(argv=None):
         if args.spec.stat().st_size > 65536:
             raise ValueError("trial definition exceeds 64 KiB")
         spec = json.loads(args.spec.read_text())
-        trial = Trial.parse(spec)
-        trial.fixture("validation")
+        pack, _ = builtins().prepare(spec)
         if args.command == "validate":
-            print("Valid: calendar.move_one.v1")
+            print(f"Valid: {pack.id} (package {pack.version})")
             return 0
         adapters = adapters_for(args.candidate)
         store = Store(args.db)

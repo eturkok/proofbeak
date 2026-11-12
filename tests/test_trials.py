@@ -12,8 +12,8 @@ from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.cli import main
 from proofbeak.engine import recover_cleanup, run_trial
-from proofbeak.models import Snapshot, Trial, fingerprint
-from proofbeak.observer import assess
+from proofbeak.models import fingerprint
+from proofbeak.packs.calendar import Snapshot, Trial, assess
 from proofbeak.report import render_html
 from proofbeak.store import IdempotencyConflict, Store
 
@@ -102,7 +102,7 @@ class TrialTests(unittest.TestCase):
 
     def test_ambiguous_write_does_not_retry(self):
         adapter = SimulationAdapter("timeout")
-        with patch.object(adapter, "move", wraps=adapter.move) as mutation:
+        with patch.object(adapter, "apply", wraps=adapter.apply) as mutation:
             result = run_trial(self.spec, [adapter], self.store, "timeout")["candidates"][0]
         self.assertEqual(mutation.call_count, 1)
         self.assertEqual(adapter.reads, 2)
@@ -116,7 +116,7 @@ class TrialTests(unittest.TestCase):
             if adapter.reads:
                 raise ProviderError("observation_unavailable")
             adapter.reads += 1
-            return replace(before, events=trial.fixture(resource.series_id))
+            return replace(before, events=trial.fixture(resource.scope_id))
         with patch.object(adapter, "read", side_effect=read):
             result = run_trial(self.spec, [adapter], self.store, "missing-after")["candidates"][0]
         self.assertEqual(result["verdict"], "inconclusive")
@@ -125,7 +125,7 @@ class TrialTests(unittest.TestCase):
     def test_invalid_baseline_stops_mutation(self):
         adapter = SimulationAdapter()
         with patch.object(adapter, "read", return_value=Snapshot([], "provider", "now")), \
-                patch.object(adapter, "move", side_effect=AssertionError("invalid baseline")):
+                patch.object(adapter, "apply", side_effect=AssertionError("invalid baseline")):
             result = run_trial(self.spec, [adapter], self.store, "baseline")["candidates"][0]
         self.assertEqual(result["verdict"], "inconclusive")
         self.assertEqual(result["reason_code"], "invalid_baseline")
@@ -147,7 +147,8 @@ class TrialTests(unittest.TestCase):
         context = [{"name": adapter.name, "version": adapter.version, "profile": adapter.profile,
                     "evidence_level": adapter.evidence_level}]
         request_hash = fingerprint({"test": self.spec, "candidates": context,
-                                    "observer_version": "0.1.0"})
+                                    "pack_id": "calendar.move_one.v1", "pack_version": "0.2.0",
+                                    "observer_version": "0.2.0"})
         run_id, _ = self.store.reserve("interrupted", request_hash)
         with patch.object(adapter, "provision", side_effect=AssertionError("must not replay")):
             report = run_trial(self.spec, [adapter], self.store, "interrupted")

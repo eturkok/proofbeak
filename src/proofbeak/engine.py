@@ -4,20 +4,23 @@ from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 
 from proofbeak.adapters.base import Adapter, ProviderError, Resource
-from proofbeak.models import Trial, fingerprint
-from proofbeak.observer import OBSERVER_VERSION, assess
+from proofbeak.models import fingerprint
+from proofbeak.observer import OBSERVER_VERSION
+from proofbeak.packs import PackRegistry, builtins
 from proofbeak.store import Store
 
 
-def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str) -> dict:
-    trial = Trial.parse(spec)
-    # Validate the entire fixture before reserving or making any external call.
-    trial.fixture("validation")
+def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str,
+              registry: PackRegistry | None = None) -> dict:
+    pack, trial = (registry or builtins()).prepare(spec)
     if not 1 <= len(adapters) <= 4 or len({a.name for a in adapters}) != len(adapters):
         raise ValueError("provide one to four distinct candidates")
+    if any(pack.id not in adapter.supported_trials for adapter in adapters):
+        raise ValueError("candidate does not support the requested trial package")
     context = [{"name": a.name, "version": a.version, "profile": a.profile,
                 "evidence_level": a.evidence_level} for a in adapters]
     request_hash = fingerprint({"test": spec, "candidates": context,
+                                "pack_id": pack.id, "pack_version": pack.version,
                                 "observer_version": OBSERVER_VERSION})
     run_id, existing = store.reserve(key, request_hash)
     if existing is not None:
@@ -35,11 +38,11 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str) -> di
             provisioned = True
             adapter.seed(resource, trial)
             before = adapter.read(resource, trial)
-            if assess(trial, before, before)["reason_code"] == "invalid_baseline":
+            if not pack.valid_baseline(trial, before):
                 raise ProviderError("invalid_baseline")
-            adapter.move(resource, trial)
+            adapter.apply(resource, trial)
             after = adapter.read(resource, trial)
-            outcome = assess(trial, before, after)
+            outcome = pack.assess(trial, before, after)
         except ProviderError as exc:
             outcome["reason_code"] = exc.reason
             if exc.reason == "write_outcome_unknown" and before is not None:
@@ -65,6 +68,7 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str) -> di
         }
         result = {
             "provider": adapter.name, "adapter_version": adapter.version,
+            "pack_id": pack.id, "pack_version": pack.version,
             "observer_version": OBSERVER_VERSION, "profile": adapter.profile,
             "evidence_level": adapter.evidence_level,
             "eligible_for_provider_comparison": adapter.evidence_level != "simulation",
@@ -74,7 +78,7 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str) -> di
             "cleanup_status": cleanup_status,
         }
         results.append(result)
-    report = {"schema_version": "0.1", "run_id": run_id, "state": "completed",
+    report = {"schema_version": "0.2", "run_id": run_id, "state": "completed",
               "test": spec, "request_hash": request_hash, "candidates": results}
     store.finish(run_id, report)
     return report
@@ -92,7 +96,7 @@ def recover_cleanup(store: Store, adapters: list[Adapter]) -> list[dict]:
         adapter = available.get(item["adapter"])
         status = "profile_unavailable"
         if adapter and fingerprint(adapter.profile) == item["profile_hash"]:
-            resource = Resource(**item["resource"])
+            resource = Resource.from_dict(item["resource"])
             if resource != adapter.resource(item["run_id"]):
                 status = "resource_scope_violation"
             else:

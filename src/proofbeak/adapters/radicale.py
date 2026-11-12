@@ -11,7 +11,8 @@ from urllib.parse import urlsplit
 
 from proofbeak.adapters.base import ProviderError, Resource
 from proofbeak.adapters.http import Transport
-from proofbeak.models import Occurrence, Snapshot, Trial, fingerprint
+from proofbeak.models import fingerprint
+from proofbeak.packs.calendar import Occurrence, Snapshot, Trial
 
 
 def icalendar_module():
@@ -24,7 +25,8 @@ def icalendar_module():
 
 class RadicaleAdapter:
     name = "radicale"
-    version = "0.1.0"
+    version = "0.2.0"
+    supported_trials = frozenset({"calendar.move_one.v1"})
     evidence_level = "local_runner"
 
     def __init__(self, endpoint: str, username: str, password: str, transport=None):
@@ -51,7 +53,7 @@ class RadicaleAdapter:
 
     def _request(self, resource, method, *, item=False, body=None, headers=None, allowed=None):
         # Every mutation is limited to the resource derived from this run id.
-        if resource != self.resource(resource.series_id):
+        if resource != self.resource(resource.scope_id):
             raise ProviderError("resource_scope_violation")
         url = resource.id + ("series.ics" if item else "")
         options = {"body": body, "headers": {**self.headers, **(headers or {})}}
@@ -74,9 +76,9 @@ class RadicaleAdapter:
         calendar.add("version", "2.0")
         calendar.add_component(ical.Timezone.from_tzinfo(
             trial.start.tzinfo, first_date=trial.start.date() - timedelta(days=366),
-            last_date=trial.fixture(resource.series_id)[-1].start.date() + timedelta(days=366)))
+            last_date=trial.fixture(resource.scope_id)[-1].start.date() + timedelta(days=366)))
         event = ical.Event()
-        event.add("uid", resource.series_id)
+        event.add("uid", resource.scope_id)
         event.add("dtstamp", datetime.now(UTC))
         event.add("dtstart", trial.start)
         event.add("dtend", trial.start + timedelta(minutes=trial.duration_minutes))
@@ -89,7 +91,7 @@ class RadicaleAdapter:
     def read(self, resource: Resource, trial: Trial) -> Snapshot:
         ical = icalendar_module()
         start = (trial.start - timedelta(days=2)).astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
-        end = (trial.fixture(resource.series_id)[-1].end + timedelta(days=2)).astimezone(
+        end = (trial.fixture(resource.scope_id)[-1].end + timedelta(days=2)).astimezone(
             UTC).strftime("%Y%m%dT%H%M%SZ")
         xml = (f'<C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">'
                f'<D:prop><C:calendar-data><C:expand start="{start}" end="{end}"/>'
@@ -128,7 +130,7 @@ class RadicaleAdapter:
             raise ProviderError("invalid_observation") from None
         return Snapshot(events, "radicale:REPORT/calendar-data/expand", datetime.now(UTC).isoformat())
 
-    def move(self, resource: Resource, trial: Trial) -> None:
+    def apply(self, resource: Resource, trial: Trial) -> None:
         ical = icalendar_module()
         response = self._request(resource, "GET", item=True)
         etag = response.headers.get("etag")
@@ -137,12 +139,12 @@ class RadicaleAdapter:
         try:
             calendar = ical.Calendar.from_ical(response.body)
             masters = [e for e in calendar.walk("VEVENT") if not e.get("RECURRENCE-ID")]
-            if len(masters) != 1 or str(masters[0]["UID"]) != resource.series_id:
+            if len(masters) != 1 or str(masters[0]["UID"]) != resource.scope_id:
                 raise ValueError("unexpected master")
             exception = copy.deepcopy(masters[0])
             for field in ("RRULE", "RDATE", "EXDATE", "DTSTART", "DTEND", "DTSTAMP"):
                 exception.pop(field, None)
-            target = trial.fixture(resource.series_id)[trial.index - 1]
+            target = trial.fixture(resource.scope_id)[trial.index - 1]
             delta = timedelta(minutes=trial.shift_minutes)
             exception.add("recurrence-id", target.original_start)
             exception.add("dtstart", target.start + delta)

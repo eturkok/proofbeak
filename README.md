@@ -6,9 +6,10 @@ Proofbeak runs a consumer's acceptance condition against candidate services and 
 observations behind each result. The agent runtime stays outside Proofbeak. No LLM, product
 account, license key, or external inference service is required by the local core.
 
-This is the first development increment from the
+This is an early development version based on the
 [product and project plan](https://chatgpt.com/library?file_id=libfile_f45914e128bc819185b293e71955b439&account_id=personal).
-It is an early local CLI, not the finished pilot. Development happens on feature branches;
+The local CLI has a domain-neutral execution core and registered trial packages. It is not
+the finished pilot. Development happens on feature branches;
 changes reach `main` only through reviewed pull requests.
 
 ## The first question
@@ -28,6 +29,31 @@ write response is never treated as evidence that the condition passed.
 
 Cleanup status is separate from the verdict. A passing trial with failed cleanup exits with an
 operational error and leaves a durable cleanup record.
+
+## Registered trial packages
+
+The worker owns reservations, execution order, evidence, and cleanup. A versioned trial
+package owns its closed schema, baseline validation, and domain-specific metrics. Provider
+adapters declare which packages they support; an incompatible combination is rejected
+before a run or a resource is created.
+
+| Package | Acceptance condition | Available adapters |
+| --- | --- | --- |
+| `calendar.move_one.v1` | Move one weekly occurrence while preserving the other instances and durations. | Radicale; labeled simulation controls |
+| `storage.put_same_key.v1` | Repeating a write to the same key preserves one object and the same content. | Real local filesystem reference adapter |
+
+```bash
+PYTHONPATH=src python3 -m proofbeak packs
+PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
+  --candidate filesystem --key storage-first-trial \
+  --output reports/storage.json --html reports/storage.html
+```
+
+The filesystem trial uses a generated disposable directory under `.proofbeak/storage` and
+reads actual directory entries and file contents before cleanup. It demonstrates a second
+domain using the same worker; its result describes this local adapter and filesystem,
+not a remote object store such as S3. `PROOFBEAK_FILESYSTEM_ROOT` can configure the test root.
+Read [the package contract](docs/trial-packs.md) to extend the built-in registry.
 
 ## Run the offline controls
 
@@ -88,6 +114,8 @@ Use the same `--key` for a retry of the same request. A completed report is retu
 another resource being created. The key is bound to the complete test, candidate order,
 adapter version, observer version, and non-secret provider profile. A changed request using
 the same key produces a conflict. Use a new key for an intentionally fresh observation.
+The package ID and version are also part of that context. The v0.2 resource ledger uses
+domain-neutral `scope_id`; cleanup still accepts records from the initial v0.1 CLI.
 
 Run state and cleanup intent are persisted before provider writes in `.proofbeak/runs.sqlite3`.
 A local process lock prevents concurrent cleanup from removing an active trial's resources.
@@ -127,7 +155,7 @@ artifact; the records contain synthetic calendar data and no account password.
 
 ## Next increments
 
-1. Establish a passing real Radicale trial and verify Google Calendar test-account access.
+1. Preserve the passing real Radicale trial and verify Google Calendar test-account access.
 2. Implement and compare the Google adapter using the identical fixture and observer.
 3. Add FastAPI/Pydantic REST and MCP interfaces around the same execution service, with
    tenant-bound authorization and asynchronous run tracking.

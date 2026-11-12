@@ -23,6 +23,15 @@ not recorded development time. Weekly availability and external-account access s
 - [ ] Verify Google test-account read/write access with the product owner.
 - [ ] Obtain two recent real service-selection questions from developers.
 
+## Generic core increment
+
+- [x] Move calendar schema, fixture, and identity rules into a versioned package.
+- [x] Use a domain-neutral adapter lifecycle and resource handle in the worker.
+- [x] Bind package version and adapter compatibility before reservation.
+- [x] Run a second package against actual disposable filesystem resources.
+- [x] Preserve cleanup deserialization for the original resource ledger.
+- [ ] Add Google Calendar as another adapter for the unchanged calendar package.
+
 Do not claim a passing real provider or cross-provider comparison from simulation controls.
 Do not build the public hub, pricing, generic natural-language compiler, or multi-DC deployment
 before evidence of repeated demand.

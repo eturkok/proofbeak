@@ -1,7 +1,7 @@
-# First increment architecture
+# Local trial architecture
 
-The product plan is the source of scope. This increment implements its CLI and local
-execution foundation; REST, MCP, shared tenants, and the hub are future increments.
+The product plan is the source of scope. The CLI now executes registered packages through a
+domain-neutral core; REST, MCP, shared tenants, and the hub are future increments.
 
 ```mermaid
 flowchart TD
@@ -17,12 +17,15 @@ flowchart TD
 
 ## Boundaries
 
-- `models.py` defines a closed operation vocabulary. No generated code, shell snippets,
-  arbitrary URLs in trial definitions, attendee fields, or unbounded recurrence are accepted.
+- `models.py` defines common JSON helpers and the observation protocol. Each registered
+  package in `packs/` defines its own closed vocabulary. Trial JSON cannot import code,
+  select an arbitrary provider URL, or execute a script.
 - `engine.py` owns execution order and result provenance. Provider write responses are ignored
   by the observer. An invalid baseline stops the mutation.
-- `observer.py` owns assertions. Identity is `(series UID, original occurrence start)` rather
-  than a provider's event ID. Duplicate, missing, or foreign identities cannot pass.
+- `observer.py` evaluates domain-neutral expected/observed metrics, distinguishing missing
+  metrics from observed mismatches and booleans from numbers. The calendar package owns
+  `(series UID, original occurrence start)` identity; the storage package owns keys and
+  content hashes. The worker does not interpret either model.
 - `adapters/` own provider-specific mutation and read paths. The Radicale adapter uses server
   recurrence expansion; it does not reconstruct a successful observation from the expected fixture.
 - `store.py` owns transactional reservations and a cleanup intent persisted before provisioning.

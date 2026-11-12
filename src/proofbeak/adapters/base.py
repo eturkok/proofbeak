@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from proofbeak.models import Snapshot, Trial
+from typing import Any
+
+from proofbeak.models import Observation
 
 
 class ProviderError(Exception):
@@ -17,7 +19,14 @@ class ProviderError(Exception):
 @dataclass(frozen=True)
 class Resource:
     id: str
-    series_id: str
+    scope_id: str
+
+    @classmethod
+    def from_dict(cls, value):
+        # Preserve cleanup for resources persisted by the initial calendar-only CLI.
+        if set(value) == {"id", "series_id"}:
+            return cls(value["id"], value["series_id"])
+        return cls(**value)
 
 
 class Adapter(Protocol):
@@ -25,10 +34,11 @@ class Adapter(Protocol):
     version: str
     evidence_level: str
     profile: dict
+    supported_trials: frozenset[str]
 
     def resource(self, run_id: str) -> Resource: ...
-    def provision(self, resource: Resource, trial: Trial) -> None: ...
-    def seed(self, resource: Resource, trial: Trial) -> None: ...
-    def read(self, resource: Resource, trial: Trial) -> Snapshot: ...
-    def move(self, resource: Resource, trial: Trial) -> None: ...
+    def provision(self, resource: Resource, trial: Any) -> None: ...
+    def seed(self, resource: Resource, trial: Any) -> None: ...
+    def read(self, resource: Resource, trial: Any) -> Observation: ...
+    def apply(self, resource: Resource, trial: Any) -> None: ...
     def cleanup(self, resource: Resource) -> None: ...
