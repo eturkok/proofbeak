@@ -40,6 +40,14 @@ class ServiceTests(unittest.TestCase):
         self.error("unauthorized", lambda: self.service.authenticate("invalid"))
         self.error("unauthorized", lambda: self.service.authenticate("c" * 40))
 
+    def test_discovery_examples_can_be_submitted_without_external_documentation(self):
+        catalog = self.service.packs("a")
+        example = next(p["example_test"] for p in catalog["packages"] if p["id"] == self.spec["id"])
+        self.assertTrue(catalog["provider_capabilities"]["filesystem"]["configured"])
+        run = self.service.submit("a", example, ["filesystem"], "discovered")
+        self.service.process_next()
+        self.assertEqual(self.service.get_run("a", run["run_id"])["candidates"][0]["verdict"], "pass")
+
     def test_queue_worker_comparison_and_evidence(self):
         run_id = self.submit()
         self.assertEqual(self.service.get_run("a", run_id)["state"], "queued")

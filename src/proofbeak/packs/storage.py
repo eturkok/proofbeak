@@ -36,6 +36,15 @@ class StorageSnapshot:
 class StoragePack:
     id = "storage.put_same_key.v1"
     version = "0.1.0"
+    description = "Repeat a write to the same key; preserve one object and the same content."
+
+    def example(self):
+        return {"id": self.id,
+                "fixture": {"key": "probe.txt", "content": "Proofbeak synthetic acceptance trial"},
+                "action": {"op": "put_same_key"},
+                "expect": [{"field": "object_count", "eq": 1},
+                           {"field": "keys_unchanged", "eq": True},
+                           {"field": "content_unchanged", "eq": True}]}
 
     def parse(self, spec):
         keys(spec, {"id", "fixture", "action", "expect"}, "trial")

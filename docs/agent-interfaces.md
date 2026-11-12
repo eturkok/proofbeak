@@ -28,7 +28,7 @@ a public listener.
 
 | Method and path | Behavior |
 | --- | --- |
-| `GET /packs` | List packages and this tenant's configured provider names. |
+| `GET /packs` | List package descriptions, runnable example definitions, and this tenant's provider capabilities. |
 | `POST /runs` | Validate, reserve, and queue; return 202 plus `run_id` and a Location header. |
 | `GET /runs/{id}` | Read queued/running/completed/interrupted state and candidate verdict summaries. |
 | `GET /runs/{id}/comparison` | Read conditions and provenance after completion; raw observations are referenced separately. |
@@ -73,7 +73,9 @@ Configure the MCP host to run `proofbeak-mcp` with `PROOFBEAK_API_URL` (default
 mechanism. The token binds this bridge process to one tenant. It is not a tool argument.
 
 The six tools are `list_trial_packs`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
-and `retry_cleanup`. Typed tool definitions return structured JSON. Discovery and reads are
+and `retry_cleanup`. Typed tool definitions publish output schemas and return structured JSON.
+Discovery supplies example trials so the agent can form a valid request without another
+documentation lookup. Discovery and reads are
 annotated read-only. Trial creation and cleanup are explicit writes; they are never hidden
 inside a read tool. A transport retry of `run_trial` must reuse its idempotency key.
 

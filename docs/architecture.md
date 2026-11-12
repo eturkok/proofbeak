@@ -1,7 +1,8 @@
 # Local trial architecture
 
 The product plan is the source of scope. The CLI now executes registered packages through a
-domain-neutral core; REST, MCP, shared tenants, and the hub are future increments.
+domain-neutral core. Optional REST/MCP interfaces add a tenant-bound queue and embedded
+worker; the hub and production isolation remain future increments.
 
 ```mermaid
 flowchart TD
@@ -30,7 +31,8 @@ flowchart TD
   recurrence expansion; it does not reconstruct a successful observation from the expected fixture.
 - `store.py` owns transactional reservations and a cleanup intent persisted before provisioning.
   A single-process file lock is used on Linux/macOS. SQLite is local and single-owner, not a
-  tenant authorization boundary. Do not expose it as a shared service.
+  tenant authorization boundary. The optional application service owns tenant checks and
+  a separate queue, and gives every job a separate CLI resource ledger.
 - `report.py` produces a self-contained, script-free HTML report. Provider strings are escaped.
 
 ## Evidence

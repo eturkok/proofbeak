@@ -76,9 +76,12 @@ class McpIntegrationTests(unittest.TestCase):
                 self.assertEqual(set(tools), {"list_trial_packs", "run_trial", "get_run",
                                              "compare_results", "get_evidence", "retry_cleanup"})
                 self.assertNotIn("tenant_id", tools["run_trial"].inputSchema["properties"])
+                self.assertTrue(all(tool.outputSchema is not None for tool in tools.values()))
                 packs = await session.call_tool("list_trial_packs", {})
                 self.assertFalse(packs.isError)
                 self.assertIn("filesystem", packs.structuredContent["providers"])
+                spec = next(pack["example_test"] for pack in packs.structuredContent["packages"]
+                            if pack["id"] == "storage.put_same_key.v1")
                 submitted = await session.call_tool("run_trial", {
                     "test": spec, "candidates": ["filesystem"], "idempotency_key": "stdio-test"})
                 self.assertFalse(submitted.isError)

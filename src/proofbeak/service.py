@@ -246,7 +246,15 @@ class TrialService:
     def packs(self, tenant):
         if tenant not in self.tenants:
             raise ServiceError("unauthorized", 401)
-        return {"packages": builtins().describe(), "providers": sorted(self.tenants[tenant].providers)}
+        capabilities = {}
+        for name, factory in self.tenants[tenant].providers.items():
+            try:
+                adapter = factory()
+                capabilities[name] = {"configured": True, "supported_trials": sorted(adapter.supported_trials)}
+            except (ValueError, OSError):
+                capabilities[name] = {"configured": False, "supported_trials": []}
+        return {"packages": builtins().describe(), "providers": sorted(self.tenants[tenant].providers),
+                "provider_capabilities": capabilities}
 
     def process_next(self):
         if self.lock is None:

@@ -31,7 +31,9 @@ class PackRegistry:
         return pack, pack.parse(spec)
 
     def describe(self):
-        return [{"id": p.id, "version": p.version} for p in self.packs.values()]
+        return [{"id": p.id, "version": p.version,
+                 **({"description": p.description, "example_test": p.example()} if hasattr(p, "example") else {})}
+                for p in self.packs.values()]
 
 
 def builtins() -> PackRegistry:

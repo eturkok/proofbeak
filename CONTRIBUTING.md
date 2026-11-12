@@ -17,7 +17,7 @@ from expected values. Raise a safe `ProviderError` reason code, never a raw cred
 request or response. Simulations always use the `simulation` evidence level.
 
 The initial worker supports Linux/macOS, Python 3.11+, and one local owner. Keep the core
-small; the future REST/Pydantic and MCP boundaries should call the same application service.
+small; REST/Pydantic and MCP boundaries call the same application service.
 
 Domain-specific schema and assertion logic belongs in `packs/`, outside the common worker,
 store, and evaluator. Register a trusted package explicitly; trial input must never select an

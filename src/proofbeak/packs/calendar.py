@@ -149,6 +149,16 @@ def assess(trial: Trial, before: Snapshot, after: Snapshot) -> dict:
 class CalendarPack:
     id = "calendar.move_one.v1"
     version = "0.2.0"
+    description = "Move only one recurring meeting instance; preserve all identities and durations."
+
+    def example(self):
+        return {"id": self.id, "fixture": {"series": "weekly", "count": 4,
+            "timezone": "Europe/Istanbul", "start": "2026-12-01T10:00:00+03:00", "duration_minutes": 30},
+            "action": {"op": "move_instance", "index": 2, "shift_minutes": 60},
+            "expect": [{"field": "instance_count", "eq": 4},
+                       {"field": "shifted_instances", "eq": [2]},
+                       {"field": "moved_minutes", "eq": 60},
+                       {"field": "duration_unchanged_for_all", "eq": True}]}
 
     def parse(self, spec):
         trial = Trial.parse(spec)

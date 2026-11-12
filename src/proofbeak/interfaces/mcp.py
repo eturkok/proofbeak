@@ -3,6 +3,7 @@
 import json
 import os
 import re
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
 from urllib.request import ProxyHandler, Request, build_opener
@@ -80,36 +81,36 @@ def create_server(client):
         except ServiceError as exc:
             raise ValueError(exc.code) from None
 
-    @server.tool(annotations=read_only)
-    def list_trial_packs() -> dict:
+    @server.tool(annotations=read_only, structured_output=True)
+    def list_trial_packs() -> dict[str, Any]:
         """List registered trial packages and this tenant's allowed providers."""
         return call("GET", "/packs")
 
-    @server.tool(annotations=write)
-    def run_trial(test: dict, candidates: list[str], idempotency_key: str) -> dict:
+    @server.tool(annotations=write, structured_output=True)
+    def run_trial(test: dict, candidates: list[str], idempotency_key: str) -> dict[str, Any]:
         """Queue a closed acceptance trial on allowed providers; reuse the key for a retry."""
         return call("POST", "/runs", {"test": test, "candidates": candidates}, key=idempotency_key)
 
-    @server.tool(annotations=read_only)
-    def get_run(run_id: str) -> dict:
+    @server.tool(annotations=read_only, structured_output=True)
+    def get_run(run_id: str) -> dict[str, Any]:
         """Read the tenant-owned run's progress and separate candidate verdicts."""
         return call("GET", client.run_path(run_id))
 
-    @server.tool(annotations=read_only)
-    def compare_results(run_id: str) -> dict:
+    @server.tool(annotations=read_only, structured_output=True)
+    def compare_results(run_id: str) -> dict[str, Any]:
         """Read acceptance checks, provenance, and cleanup status after a run completes."""
         return call("GET", client.run_path(run_id) + "/comparison")
 
-    @server.tool(annotations=read_only)
-    def get_evidence(evidence_id: str) -> dict:
+    @server.tool(annotations=read_only, structured_output=True)
+    def get_evidence(evidence_id: str) -> dict[str, Any]:
         """Read authorized before/after observations and their integrity fingerprint."""
         if not re.fullmatch(r"[a-f0-9]{32}:[0-3]", evidence_id):
             raise ValueError("not_found")
         return call("GET", "/evidence/" + quote(evidence_id, safe=""))
 
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True,
-                                           idempotentHint=True, openWorldHint=True))
-    def retry_cleanup(run_id: str) -> dict:
+                                           idempotentHint=True, openWorldHint=True), structured_output=True)
+    def retry_cleanup(run_id: str) -> dict[str, Any]:
         """Retry cleanup of this completed/interrupted trial's owned disposable resources only."""
         return call("POST", client.run_path(run_id) + "/cleanup")
 
