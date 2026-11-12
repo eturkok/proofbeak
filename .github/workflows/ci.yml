@@ -33,3 +33,10 @@ jobs:
       - run: python tests/test_radicale_integration.py -v
         env:
           PROOFBEAK_REQUIRE_INTEGRATION: '1'
+          PROOFBEAK_INTEGRATION_REPORT: reports/radicale-integration.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: radicale-trial-evidence
+          path: reports/radicale-integration.*
+          if-no-files-found: error
+          retention-days: 7

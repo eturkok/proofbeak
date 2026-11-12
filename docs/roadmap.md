@@ -19,13 +19,18 @@ not recorded development time. Weekly availability and external-account access s
 - [x] SQLite idempotency, resource ledger, quarantine, explicit cleanup recovery.
 - [x] JSON evidence and portable HTML comparison report.
 - [x] Radicale adapter, container setup, and real-server integration test implementation.
-- [ ] Run and pass the real Radicale integration (requires installable calendar/server packages).
+- [x] Run and pass the real Radicale integration in GitHub CI (November 12, 2026).
 - [ ] Verify Google test-account read/write access with the product owner.
 - [ ] Obtain two recent real service-selection questions from developers.
 
 Do not claim a passing real provider or cross-provider comparison from simulation controls.
 Do not build the public hub, pricing, generic natural-language compiler, or multi-DC deployment
 before evidence of repeated demand.
+
+The initial real-provider verification passed in
+[CI run 43296836958](https://github.com/eturkok/proofbeak/actions/runs/43296836958),
+alongside the Python 3.11, 3.13, and 3.14 core jobs. Subsequent CI runs preserve the synthetic
+Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven days.
 
 ## Pilot decision gates
 

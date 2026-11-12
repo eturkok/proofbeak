@@ -16,6 +16,7 @@ from urllib.request import urlopen
 
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.engine import run_trial
+from proofbeak.report import render_html
 from proofbeak.store import Store
 
 AVAILABLE = all(importlib.util.find_spec(name) for name in ("radicale", "icalendar"))
@@ -57,7 +58,8 @@ class RadicaleIntegrationTests(unittest.TestCase):
                     adapter = RadicaleAdapter(endpoint, "proofbeak", password)
                     store = Store(root / "runs.sqlite3")
                     try:
-                        result = run_trial(spec, [adapter], store, "real-radicale")["candidates"][0]
+                        report = run_trial(spec, [adapter], store, "real-radicale")
+                        result = report["candidates"][0]
                         self.assertEqual(result["verdict"], "pass", result)
                         self.assertEqual(result["cleanup_status"], "cleaned")
                         self.assertEqual(len(result["evidence"]["after"]["events"]), 4)
@@ -66,6 +68,11 @@ class RadicaleIntegrationTests(unittest.TestCase):
                         resource = adapter.resource(store.db.execute("SELECT id FROM runs").fetchone()[0])
                         self.assertEqual(adapter.transport.request(
                             "GET", resource.id, headers=adapter.headers, allowed=(404,)).status, 404)
+                        if os.environ.get("PROOFBEAK_INTEGRATION_REPORT"):
+                            output = Path(os.environ["PROOFBEAK_INTEGRATION_REPORT"])
+                            output.parent.mkdir(parents=True, exist_ok=True)
+                            output.write_text(json.dumps(report, indent=2) + "\n")
+                            output.with_suffix(".html").write_text(render_html(report))
                     finally:
                         store.close()
                 finally:

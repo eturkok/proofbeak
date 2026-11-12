@@ -120,6 +120,10 @@ PROOFBEAK_REQUIRE_INTEGRATION=1 PYTHONPATH=src \
 The offline suite covers false positives, duplicate and missing identities, UTC normalization,
 DST boundaries, interruption, idempotency, resource ownership, cleanup recovery, and report
 escaping. CI installs calendar dependencies and runs a real Radicale process on loopback.
+The initial real-server integration and the Python 3.11/3.13/3.14 core jobs
+[passed in GitHub CI](https://github.com/eturkok/proofbeak/actions/runs/43296836958).
+The integration job also saves its JSON/HTML observations as a `radicale-trial-evidence`
+artifact; the records contain synthetic calendar data and no account password.
 
 ## Next increments
 
