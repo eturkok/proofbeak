@@ -72,6 +72,8 @@ Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven 
 - [x] Add chart validation and an actual kind install/REST trial to CI.
 - [x] Run the deployment checks and preserve their reports (CI run 43313710253).
 - [ ] Validate an actual OpenShift install and NetworkPolicy enforcement on the target CNI.
+- [x] Add an actual pod replacement test for persistent evidence and idempotency.
+- [ ] Run the new restart verification in CI.
 
 ## Pilot decision gates
 

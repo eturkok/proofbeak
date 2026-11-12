@@ -115,3 +115,13 @@ enforcement; the Kubernetes report explicitly records this limit. CI uses synthe
 and ephemeral credentials, and never calls a real Google account.
 
 The full container and Kubernetes checks passed in [CI run 43313710253](https://github.com/eturkok/proofbeak/actions/runs/43313710253).
+
+## Persistent restart verification
+
+The Kubernetes smoke check also replaces the API pod after a completed trial, reconnects to
+the same PVC and submits the identical idempotency key. It requires the same run ID, evidence
+hash and original observation timestamp. This checks durable retrieval through an actual pod
+replacement without treating a retry as a fresh observation. The report distinguishes the
+CI client's UID from the UID obtained inside the running API pod. It does not establish
+backup restore, cross-node storage failover, multi-writer safety or provider recovery during
+an interrupted mutation; those have different failure modes.

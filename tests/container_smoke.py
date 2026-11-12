@@ -43,7 +43,9 @@ assert evidence["evidence"]["after"] is not None
 assert evidence["cleanup_status"] == "cleaned"
 assert evidence["validity"]["reusable"]
 assert os.geteuid() != 0
-print(json.dumps({"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned","worker_backend":comparison["runner"]["backend"]}))
+print(json.dumps({"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned",
+                  "run_id":run_id,"evidence_hash":evidence["evidence_hash"],"observed_at":evidence["observed_at"],
+                  "worker_backend":comparison["runner"]["backend"]}))
 '''
 
 
