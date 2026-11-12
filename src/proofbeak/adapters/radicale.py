@@ -25,7 +25,7 @@ def icalendar_module():
 
 class RadicaleAdapter:
     name = "radicale"
-    version = "0.2.0"
+    version = "0.2.1"
     supported_trials = frozenset({"calendar.move_one.v1"})
     evidence_level = "local_runner"
 
@@ -42,6 +42,8 @@ class RadicaleAdapter:
         self.username = username
         self._password = password
         self.transport = transport or Transport()
+        if transport is not None:
+            self.evidence_level = "simulation"
         token = base64.b64encode(f"{username}:{password}".encode()).decode()
         self.headers = {"Authorization": f"Basic {token}"}
         self.profile = {"endpoint": self.endpoint, "account_scope": fingerprint(username),

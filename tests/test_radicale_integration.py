@@ -64,6 +64,9 @@ class RadicaleIntegrationTests(unittest.TestCase):
                         self.assertEqual(result["cleanup_status"], "cleaned")
                         self.assertEqual(len(result["evidence"]["after"]["events"]), 4)
                         self.assertTrue(result["eligible_for_provider_comparison"])
+                        self.assertGreater(result["measurements"]["provider_http_attempts"], 0)
+                        self.assertEqual(result["measurements"]["provider_http_attempts"],
+                                         adapter.transport.total_calls)
                         self.assertEqual(store.pending(), [])
                         resource = adapter.resource(store.db.execute("SELECT id FROM runs").fetchone()[0])
                         self.assertEqual(adapter.transport.request(

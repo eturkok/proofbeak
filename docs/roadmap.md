@@ -75,6 +75,15 @@ Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven 
 
 ## Pilot decision gates
 
+- [x] Measure candidate wall/CPU time and instrumented HTTP attempts including cleanup.
+- [x] Implement offline paired A/B scoring with sealed reviewer references and explicit missing data.
+- [x] Reject simulated evidence, unstable repeats and invalid budgets from pilot continuation signals.
+- [x] Prepare three-developer onboarding/return observation templates and pilot instructions.
+- [ ] Collect real developer questions, independent reviews and external agent A/B attempts.
+- [ ] Observe actual onboarding and fourteen-day return usage; make the continuation decision.
+
+See [pilot collection and scoring](pilot.md). Regression-test studies are not real pilot results.
+
 Keep failure and inconclusive cases separate. Use twelve decision cases, including at least
 four real-provider observations. Compare documentation alone to documentation plus Proofbeak
 with the same model, task, candidates, and budget. Two independent reviewers establish the

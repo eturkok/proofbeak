@@ -21,6 +21,7 @@ agents = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.34,<1", "mcp>=1.
 proofbeak = "proofbeak.cli:main"
 proofbeak-server = "proofbeak.server:main"
 proofbeak-mcp = "proofbeak.interfaces.mcp:main"
+proofbeak-pilot = "proofbeak.pilot:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

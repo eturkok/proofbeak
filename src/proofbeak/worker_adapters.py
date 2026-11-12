@@ -12,10 +12,12 @@ def encode_adapter(adapter):
         return {"type": "filesystem", "options": {"root": str(adapter.root)}}
     if type(adapter) is SimulationAdapter:
         return {"type": "simulation", "options": {"mode": adapter.mode}}
-    if type(adapter) is RadicaleAdapter and type(adapter.transport) is Transport:
+    if type(adapter) is RadicaleAdapter and type(adapter.transport) is Transport \
+            and adapter.evidence_level != "simulation":
         return {"type": "radicale", "options": {"endpoint": adapter.endpoint,
                 "username": adapter.username, "password": adapter._password}}
-    if type(adapter) is GoogleCalendarAdapter and type(adapter.transport) is Transport:
+    if type(adapter) is GoogleCalendarAdapter and type(adapter.transport) is Transport \
+            and adapter.evidence_level != "simulation":
         return {"type": "google-calendar", "options": {"access_token": adapter._access_token,
                                                         "test_account": adapter.account}}
     raise ValueError("adapter has no registered worker codec")

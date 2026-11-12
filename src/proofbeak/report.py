@@ -10,6 +10,13 @@ def render_html(report: dict) -> str:
 
     cards = []
     for candidate in report["candidates"]:
+        measurements = candidate.get("measurements", {})
+        timing = ""
+        if measurements:
+            timing = (f'<p>Trial + cleanup: {escape(measurements["wall_seconds"])} s wall; '
+                      f'{escape(measurements["cpu_seconds"])} s worker CPU; '
+                      f'provider HTTP attempts: {escape(measurements["provider_http_attempts"])}. '
+                      'External agent tokens and cost: unmeasured.</p>')
         rows = "".join(
             f'<tr><th>{escape(c["field"])}</th><td>{escape(c["expected"])}</td>'
             f'<td>{escape(c["observed"])}</td><td>{"✓" if c["passed"] else "×"}</td></tr>'
@@ -22,6 +29,7 @@ def render_html(report: dict) -> str:
             '<div class="scroll"><table><thead><tr><th>Condition</th><th>Expected</th>'
             f'<th>Observed</th><th>Result</th></tr></thead><tbody>{rows}</tbody></table></div>'
             f'<p>Cleanup: {escape(candidate["cleanup_status"])}</p>'
+            f'{timing}'
             f'<p class="hash">Evidence SHA-256: {escape(candidate["evidence_hash"])}</p>'
             '<details><summary>Inspect before / after observations</summary>'
             f'<pre>{escape(json.dumps(candidate["evidence"], indent=2))}</pre></details></article>')

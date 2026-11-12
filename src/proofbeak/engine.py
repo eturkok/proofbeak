@@ -2,6 +2,7 @@
 
 from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
+import time
 
 from proofbeak.adapters.base import Adapter, ProviderError, Resource
 from proofbeak.models import fingerprint
@@ -27,6 +28,9 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str,
         return existing
     results = []
     for adapter in adapters:
+        wall_start, cpu_start = time.monotonic(), time.process_time()
+        transport = getattr(adapter, "transport", None)
+        calls_start = getattr(transport, "total_calls", None)
         resource = adapter.resource(run_id)
         store.track(run_id, adapter.name, fingerprint(adapter.profile), asdict(resource))
         before = after = None
@@ -61,6 +65,14 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str,
                 except ProviderError:
                     cleanup_status = "quarantined"
             store.cleaned(run_id, adapter.name, cleanup_status)
+        calls_end = getattr(transport, "total_calls", None)
+        http_attempts = calls_end - calls_start if type(calls_start) is int \
+            and type(calls_end) is int and calls_end >= calls_start else None
+        measurements = {"version": "1", "scope": "candidate_lifecycle_including_cleanup",
+                        "wall_seconds": max(0, time.monotonic() - wall_start),
+                        "cpu_seconds": max(0, time.process_time() - cpu_start),
+                        "provider_http_attempts": http_attempts,
+                        "llm_tokens": None, "llm_cost_usd": None}
         now = datetime.now(UTC)
         evidence = {
             "before": before.to_dict() if before is not None else None,
@@ -76,6 +88,7 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str,
             "observed_at": now.isoformat(), "expires_at": (now + timedelta(hours=24)).isoformat(),
             **outcome, "evidence": evidence, "evidence_hash": fingerprint(evidence),
             "cleanup_status": cleanup_status,
+            "measurements": measurements,
         }
         results.append(result)
     report = {"schema_version": "0.2", "run_id": run_id, "state": "completed",

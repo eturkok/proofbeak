@@ -26,12 +26,14 @@ class Transport:
         self.max_calls = max_calls
         self.max_bytes = max_bytes
         self.calls = 0
+        self.total_calls = 0
         self.opener = build_opener(NoRedirect(), ProxyHandler({}))
 
     def request(self, method, url, *, body=None, headers=None, allowed=(200, 201, 204)):
         if self.calls >= self.max_calls:
             raise ProviderError("request_budget_exceeded")
         self.calls += 1
+        self.total_calls += 1
         req = Request(url, data=body, method=method, headers=headers or {})
         try:
             with self.opener.open(req, timeout=self.timeout) as response:

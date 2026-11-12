@@ -53,6 +53,21 @@ class TransportTests(unittest.TestCase):
         self.assertEqual(raised.exception.reason, "response_too_large")
         response.read.assert_called_once_with(5)
 
+    def test_total_attempts_survive_cleanup_budget_reset_and_count_failed_io(self):
+        transport = self.transport(URLError("offline"))
+        for _ in range(3):
+            with self.assertRaises(ProviderError):
+                transport.request("GET", "https://example.test")
+        transport.calls = 0
+        with self.assertRaises(ProviderError):
+            transport.request("DELETE", "https://example.test")
+        self.assertEqual(transport.calls, 1)
+        self.assertEqual(transport.total_calls, 4)
+        transport.max_calls = 1
+        with self.assertRaises(ProviderError):
+            transport.request("GET", "https://example.test")
+        self.assertEqual(transport.total_calls, 4)
+
 
 if __name__ == "__main__":
     unittest.main()

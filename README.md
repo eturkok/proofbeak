@@ -214,3 +214,12 @@ an observation's timestamp, and deleted idempotency keys cannot silently trigger
 See [architecture](docs/architecture.md), [milestones](docs/roadmap.md),
 [Google access checklist](docs/google-calendar.md), and [contribution rules](CONTRIBUTING.md).
 The core is licensed under Apache-2.0.
+
+## Pilot preparation
+
+Candidate reports now record trial/cleanup wall time, worker CPU and instrumented HTTP attempts.
+External agent tokens and cost stay unmeasured. The offline proofbeak-pilot command prepares
+empty study templates, seals two-reviewer references, and scores externally collected paired
+agent attempts plus developer onboarding/return observations.
+See [the pilot protocol](docs/pilot.md). No actual human pilot or decision-quality claim has
+been made; simulations and incomplete measurements cannot pass the continuation gates.
