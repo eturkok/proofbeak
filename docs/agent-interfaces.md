@@ -18,12 +18,13 @@ configuration file stores only its SHA-256, is created with mode 0600, and is ne
 The state directory must be private to its owner (0700). Keep the configuration and state
 outside version control. Neither CLI core nor the server requires an external LLM.
 
-The server binds to `127.0.0.1` and starts one scheduling coordinator. Trial and cleanup work
+The server defaults to `127.0.0.1` and starts one scheduling coordinator. Trial and cleanup work
 run in bounded subprocesses, described in [worker processes](worker-processes.md). All data
 routes require `Authorization: Bearer <tenant-key>`. `/health` exposes readiness only. API
 documentation and schema routes are disabled. For remote deployments, terminate TLS and
-apply network controls outside this local prototype; the built-in launcher does not expose
-a public listener.
+apply network controls outside the API. The container explicitly sets `--host 0.0.0.0`;
+the Compose host port remains loopback-only and the Helm Service is ClusterIP. See
+[deployment configuration](deployment.md).
 
 ## REST contract
 
@@ -74,8 +75,9 @@ Configure the MCP host to run `proofbeak-mcp` with `PROOFBEAK_API_URL` (default
 `http://127.0.0.1:8765`) and `PROOFBEAK_API_TOKEN` supplied through its local secret/environment
 mechanism. The token binds this bridge process to one tenant. It is not a tool argument.
 
-The seven tools are `list_trial_packs`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
-`retry_cleanup`, and `cancel_run`. Typed tools publish output schemas and return structured JSON.
+The eleven tools are `list_trial_packs`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
+`retry_cleanup`, `cancel_run`, `list_runs`, `find_evidence`, `revoke_evidence`, and `list_audit_events`.
+Typed tools publish output schemas and return structured JSON.
 Discovery supplies example trials so the agent can form a valid request without another
 documentation lookup. Discovery and reads are
 annotated read-only. Trial creation and cleanup are explicit writes; they are never hidden
@@ -106,8 +108,9 @@ job without making a new provider write. Shutdown terminates owned workers and p
 cleanup intent; if the coordinator has not finished, it retains exclusive ownership.
 
 API-key tenant checks are logical access controls. Worker processes and wall-clock deadlines
-bound execution, while container/network isolation, SSO/OAuth for remote clients, audit/retention
-jobs, and production egress/secret controls remain pilot work.
+bound execution. The deployment package adds a non-root, read-only container and configurable
+Kubernetes egress policy. Audit and retention are described in [evidence lifecycle](evidence-lifecycle.md).
+SSO/OAuth for remote clients remains pilot work.
 
 ## Operator provider configuration
 

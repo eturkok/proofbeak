@@ -1,0 +1,7 @@
+apiVersion: v2
+name: proofbeak
+description: Local acceptance-trial service with bounded worker processes
+type: application
+version: 0.1.0
+appVersion: 0.3.0.dev1
+kubeVersion: '>=1.28.0-0'

@@ -1,0 +1,2 @@
+# Synthetic rendering fixture; no real Kubernetes Secret or account is created by this file.
+existingSecret: proofbeak-ci-config

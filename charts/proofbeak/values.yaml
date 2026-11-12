@@ -1,0 +1,50 @@
+image:
+  repository: proofbeak
+  tag: local
+  digest: ''
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+existingSecret: ''
+credentialsSecret: ''
+configKey: config.json
+replicaCount: 1
+service:
+  port: 8765
+persistence:
+  enabled: true
+  existingClaim: ''
+  storageClass: ''
+  size: 2Gi
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: '2'
+    memory: 2Gi
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - podSelector:
+        matchLabels:
+          proofbeak-client: 'true'
+  allowDNS: false
+  dnsNamespace: kube-system
+  egressRules: []
+test:
+  enabled: true
+nodeSelector: {}
+tolerations: []
+affinity: {}

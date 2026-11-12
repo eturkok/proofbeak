@@ -64,6 +64,15 @@ The initial real-provider verification passed in
 alongside the Python 3.11, 3.13, and 3.14 core jobs. Subsequent CI runs preserve the synthetic
 Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven days.
 
+## Deployment increment
+
+- [x] Pin runtime dependencies with hashes and the Python base image by digest.
+- [x] Package non-root Compose and singleton Helm deployments with persistent state.
+- [x] Add read-only filesystem and arbitrary-UID offline container checks.
+- [x] Add chart validation and an actual kind install/REST trial to CI.
+- [ ] Run the deployment checks and preserve their reports.
+- [ ] Validate an actual OpenShift install and NetworkPolicy enforcement on the target CNI.
+
 ## Pilot decision gates
 
 Keep failure and inconclusive cases separate. Use twelve decision cases, including at least

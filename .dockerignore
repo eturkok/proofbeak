@@ -1,0 +1,12 @@
+.git
+.proofbeak
+.venv
+.env
+.env.*
+__pycache__
+*.pyc
+*.egg-info
+reports
+dist
+build
+.DS_Store

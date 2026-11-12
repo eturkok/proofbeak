@@ -194,9 +194,10 @@ proofbeak-server serve
 
 Supply the one-time issued API key to your client/MCP host locally. See
 [agent interface setup, tools, and recovery](docs/agent-interfaces.md). The built-in launcher
-is a loopback-only prototype with bounded worker subprocesses, cancellation, and crash recovery.
-See [worker lifecycle and limits](docs/worker-processes.md). Container/network isolation and
-production identity remain pending. Core CLI usage remains dependency-free.
+binds to loopback by default and runs bounded worker subprocesses, cancellation, and crash recovery.
+See [worker lifecycle and limits](docs/worker-processes.md) and the
+[container and Helm deployment package](docs/deployment.md). Production identity remains pending.
+Core CLI usage remains dependency-free.
 
 ## Next increments
 
@@ -207,8 +208,7 @@ an observation's timestamp, and deleted idempotency keys cannot silently trigger
 
 1. Run the implemented Google adapter against a dedicated test account.
 2. Preserve the first actual Google/Radicale comparison under the identical fixture and package.
-3. Harden the implemented REST/MCP interfaces with isolated workers and production identity,
-   deadlines, audit, and retention controls.
+3. Verify the container and Helm installation in CI; add production identity when a remote pilot requires it.
 4. Validate real selection decisions with pilot developers before building the private hub.
 
 See [architecture](docs/architecture.md), [milestones](docs/roadmap.md),

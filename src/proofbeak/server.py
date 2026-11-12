@@ -64,9 +64,10 @@ def main(argv=None):
     init.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     init.add_argument("--state", type=Path, default=Path(".proofbeak/server"))
     init.add_argument("--tenant", default="demo")
-    serve = commands.add_parser("serve", help="run one loopback-only REST worker")
+    serve = commands.add_parser("serve", help="run one REST coordinator (loopback by default)")
     serve.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     serve.add_argument("--port", type=int, default=8765)
+    serve.add_argument("--host", choices=["127.0.0.1", "0.0.0.0", "::1"], default="127.0.0.1")
     maintain = commands.add_parser("maintain", help="apply local evidence retention while the API is stopped")
     maintain.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     purge = commands.add_parser("purge-tenant", help="erase a tenant's stored data after resource cleanup")
@@ -103,7 +104,8 @@ def main(argv=None):
     except ImportError:
         parser.error("install proofbeak[agents] to run the optional agent interfaces")
     service = load_service(args.config)
-    uvicorn.run(create_app(service), host="127.0.0.1", port=args.port, workers=1, access_log=False)
+    uvicorn.run(create_app(service), host=args.host, port=args.port, workers=1,
+                access_log=False, timeout_graceful_shutdown=5)
     return 0
 
 

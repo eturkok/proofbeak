@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "existingSecret", "replicaCount", "service"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "tag", "digest", "pullPolicy"],
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string", "minLength": 1},
+        "digest": {"type": "string", "pattern": "^$|^sha256:[a-f0-9]{64}$"},
+        "pullPolicy": {"enum": ["IfNotPresent", "Never", "Always"]}
+      }
+    },
+    "existingSecret": {"type": "string", "minLength": 1, "maxLength": 253},
+    "configKey": {"type": "string", "minLength": 1},
+    "replicaCount": {"const": 1},
+    "service": {
+      "type": "object",
+      "properties": {"port": {"type": "integer", "minimum": 1024, "maximum": 65535}}
+    },
+    "persistence": {
+      "type": "object",
+      "required": ["enabled", "existingClaim", "storageClass", "size"],
+      "properties": {"enabled": {"type": "boolean"}, "existingClaim": {"type": "string"},
+                     "storageClass": {"type": "string"}, "size": {"type": "string", "minLength": 1}}
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {"enabled": {"type": "boolean"}, "allowDNS": {"type": "boolean"},
+                     "ingressFrom": {"type": "array", "minItems": 1}, "egressRules": {"type": "array"}}
+    }
+  }
+}
