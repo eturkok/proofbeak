@@ -208,7 +208,7 @@ an observation's timestamp, and deleted idempotency keys cannot silently trigger
 
 1. Run the implemented Google adapter against a dedicated test account.
 2. Preserve the first actual Google/Radicale comparison under the identical fixture and package.
-3. Verify the container and Helm installation in CI; add production identity when a remote pilot requires it.
+3. Add production identity when a remote pilot requires it; container and Helm CI checks pass.
 4. Validate real selection decisions with pilot developers before building the private hub.
 
 See [architecture](docs/architecture.md), [milestones](docs/roadmap.md),

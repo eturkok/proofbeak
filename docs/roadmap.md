@@ -70,7 +70,7 @@ Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven 
 - [x] Package non-root Compose and singleton Helm deployments with persistent state.
 - [x] Add read-only filesystem and arbitrary-UID offline container checks.
 - [x] Add chart validation and an actual kind install/REST trial to CI.
-- [ ] Run the deployment checks and preserve their reports.
+- [x] Run the deployment checks and preserve their reports (CI run 43313710253).
 - [ ] Validate an actual OpenShift install and NetworkPolicy enforcement on the target CNI.
 
 ## Pilot decision gates

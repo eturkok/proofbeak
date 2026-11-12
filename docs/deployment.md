@@ -113,3 +113,5 @@ cluster with a persistent volume, runs `helm test`, and exercises the deployed R
 Reports are uploaded as `deployment-smoke-evidence`. Kindnet does not establish NetworkPolicy
 enforcement; the Kubernetes report explicitly records this limit. CI uses synthetic fixtures
 and ephemeral credentials, and never calls a real Google account.
+
+The full container and Kubernetes checks passed in [CI run 43313710253](https://github.com/eturkok/proofbeak/actions/runs/43313710253).
