@@ -80,6 +80,8 @@ calendar provider is configured, `credentialsSecret` can name a separate operato
 Secret whose keys become the environment variables referenced by the config. The Helm health
 test receives neither config nor provider credentials. Apply cluster encryption/RBAC and
 secret rotation according to your environment. These Kubernetes Secrets do not implement SSO.
+The completed test pod remains available for `helm test --logs` and is replaced on the next
+test. Remove it explicitly when finished if your cluster requires immediate hook cleanup.
 
 The default filesystem trial needs no outbound network. The chart's NetworkPolicy denies
 all egress and accepts service ingress only from same-namespace pods labeled
