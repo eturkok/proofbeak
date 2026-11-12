@@ -25,6 +25,7 @@ class Store:
             raise ValueError("another local worker owns this store; retry when it finishes") from None
         self.db = sqlite3.connect(path, timeout=10)
         self.db.execute("PRAGMA foreign_keys=ON")
+        self.db.execute("PRAGMA secure_delete=ON")
         self.db.executescript("""
             CREATE TABLE IF NOT EXISTS runs (
                 id TEXT PRIMARY KEY,
@@ -84,6 +85,24 @@ class Store:
         with self.db:
             self.db.execute("UPDATE runs SET state='completed', result=? WHERE id=?",
                             (canonical(result), run_id))
+
+    def purge_raw(self):
+        from proofbeak.lifecycle import redact_report
+
+        with self.db:
+            rows = self.db.execute("SELECT id,result FROM runs WHERE result IS NOT NULL").fetchall()
+            for run_id, result in rows:
+                self.db.execute("UPDATE runs SET result=? WHERE id=?",
+                                (canonical(redact_report(json.loads(result))), run_id))
+        self.db.execute("VACUUM")
+
+    def erase(self):
+        if self.pending():
+            raise ValueError("cleanup is required before erasing a resource ledger")
+        with self.db:
+            self.db.execute("DELETE FROM resources")
+            self.db.execute("DELETE FROM runs")
+        self.db.execute("VACUUM")
 
     def close(self):
         self.db.close()

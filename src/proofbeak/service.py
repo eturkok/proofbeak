@@ -8,6 +8,7 @@ import hmac
 import json
 import re
 import sqlite3
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -17,6 +18,7 @@ from uuid import uuid4
 
 from proofbeak.executor import SubprocessExecutor
 from proofbeak.models import canonical, fingerprint
+from proofbeak.lifecycle import EvidenceLifecycle
 from proofbeak.observer import OBSERVER_VERSION
 from proofbeak.packs import builtins
 
@@ -34,7 +36,7 @@ class Tenant:
     providers: dict
 
 
-class TrialService:
+class TrialService(EvidenceLifecycle):
     def __init__(self, root, tenants, pending_limit=8, executor=None):
         self.root = Path(root).resolve()
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -59,17 +61,20 @@ class TrialService:
         self.worker = None
         self.stop = Event()
         self.wake = Event()
+        self.last_maintenance = 0
         with self._db() as db:
             db.execute("""CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY, tenant TEXT NOT NULL, client_key TEXT NOT NULL,
                 request_hash TEXT NOT NULL, request TEXT NOT NULL, context TEXT NOT NULL,
                 state TEXT NOT NULL, result TEXT, reason TEXT, recovery TEXT,
                 created_at TEXT NOT NULL, UNIQUE(tenant, client_key))""")
+        self._init_lifecycle()
 
     @contextmanager
     def _db(self):
         db = sqlite3.connect(self.database, timeout=10)
         db.row_factory = sqlite3.Row
+        db.execute("PRAGMA secure_delete=ON")
         try:
             with db:
                 yield db
@@ -120,11 +125,13 @@ class TrialService:
                 match = tenant.id
         if match is None:
             raise ServiceError("unauthorized", 401)
+        if self._disabled(digest):
+            raise ServiceError("unauthorized", 401)
         return match
 
     def _adapters(self, tenant_id, candidates):
         tenant = self.tenants.get(tenant_id)
-        if tenant is None:
+        if tenant is None or self._disabled(tenant.token_sha256):
             raise ServiceError("unauthorized", 401)
         if not isinstance(candidates, list) or not 1 <= len(candidates) <= 4 \
                 or any(not isinstance(c, str) for c in candidates) or len(set(candidates)) != len(candidates):
@@ -150,6 +157,7 @@ class TrialService:
             raise ServiceError("unsupported_worker_adapter", 422) from None
         return {"pack_id": pack.id, "pack_version": pack.version,
                 "executor": self.executor.context(),
+                "evidence_policy_version": "1",
                 "observer_version": OBSERVER_VERSION,
                 "providers": [{"name": a.name, "version": a.version, "profile": a.profile,
                                "evidence_level": a.evidence_level} for a in adapters]}
@@ -159,6 +167,10 @@ class TrialService:
             raise ServiceError("service_unavailable", 503)
         if not isinstance(key, str) or not 1 <= len(key) <= 128:
             raise ServiceError("invalid_idempotency_key", 422)
+        with self._db() as db:
+            if db.execute("SELECT 1 FROM tombstones WHERE tenant=? AND key_hash=?",
+                          (tenant, fingerprint(key))).fetchone():
+                raise ServiceError("run_deleted", 410)
         try:
             request = canonical({"test": spec, "candidates": candidates})
             if len(request.encode()) > 65536:
@@ -179,9 +191,11 @@ class TrialService:
             if count >= self.pending_limit:
                 raise ServiceError("tenant_queue_full", 429)
             run_id = uuid4().hex
-            db.execute("INSERT INTO jobs VALUES (?, ?, ?, ?, ?, ?, 'queued', NULL, NULL, NULL, ?)",
+            db.execute("INSERT INTO jobs (id,tenant,client_key,request_hash,request,context,state,result,reason,recovery,created_at) "
+                       "VALUES (?, ?, ?, ?, ?, ?, 'queued', NULL, NULL, NULL, ?)",
                        (run_id, tenant, key, request_hash, request, canonical(context),
                         datetime.now(UTC).isoformat()))
+            self._audit(db, tenant, "run_submitted", run_id, {"request_hash": request_hash})
         self.wake.set()
         return {"run_id": run_id, "state": "queued"}
 
@@ -191,6 +205,8 @@ class TrialService:
         with self._db() as db:
             row = db.execute("SELECT * FROM jobs WHERE tenant=? AND id=?", (tenant, run_id)).fetchone()
         if row is None:
+            if self._is_deleted(tenant, run_id):
+                raise ServiceError("run_deleted", 410)
             raise ServiceError("not_found", 404)
         return row
 
@@ -204,6 +220,7 @@ class TrialService:
                                    "evidence_ref": f"{run_id}:{index}"})
         return {"run_id": run_id, "state": row["state"], "reason_code": row["reason"],
                 "created_at": row["created_at"], "candidates": candidates,
+                "revoked_at": row["revoked_at"], "raw_purged_at": row["raw_purged_at"],
                 "cleanup_recovery": json.loads(row["recovery"]) if row["recovery"] else None}
 
     def comparison(self, tenant, run_id):
@@ -212,8 +229,10 @@ class TrialService:
             raise ServiceError("result_not_available", 409)
         report = json.loads(row["result"])
         for index, item in enumerate(report["candidates"]):
+            item["validity"] = self.validity(row, item)
             item.pop("evidence", None)
             item["evidence_ref"] = f"{run_id}:{index}"
+        report["revoked_at"] = row["revoked_at"]
         return report
 
     def evidence(self, tenant, evidence_id):
@@ -226,9 +245,22 @@ class TrialService:
         candidates = json.loads(row["result"])["candidates"]
         if int(index) >= len(candidates):
             raise ServiceError("not_found", 404)
-        return {"evidence_id": evidence_id, "run_id": run_id, **candidates[int(index)]}
+        candidate = candidates[int(index)]
+        validity = self.validity(row, candidate)
+        if "integrity_failed" in validity["reasons"]:
+            self.record_event(tenant, "evidence_integrity_failed", run_id)
+            raise ServiceError("evidence_integrity_failed", 409)
+        if row["raw_purged_at"]:
+            raise ServiceError("raw_evidence_purged", 410)
+        self.record_event(tenant, "evidence_read", run_id, {"candidate": int(index)})
+        return {"evidence_id": evidence_id, "run_id": run_id, **candidate, "validity": validity}
 
     def cleanup(self, tenant, run_id):
+        self._row(tenant, run_id)
+        with self._operation(run_id):
+            return self._cleanup_job(tenant, run_id)
+
+    def _cleanup_job(self, tenant, run_id):
         row = self._row(tenant, run_id)
         if row["state"] in {"queued", "running"}:
             raise ServiceError("run_still_active", 409)
@@ -246,6 +278,7 @@ class TrialService:
         with self._db() as db:
             db.execute("UPDATE jobs SET recovery=? WHERE id=? AND tenant=?",
                        (canonical(outcomes), run_id, tenant))
+            self._audit(db, tenant, "cleanup_retried", run_id, {"statuses": [o["status"] for o in outcomes]})
         return {"run_id": run_id, "cleanup_recovery": outcomes}
 
     def cancel(self, tenant, run_id):
@@ -256,8 +289,10 @@ class TrialService:
             if row["state"] == "queued":
                 db.execute("UPDATE jobs SET state='cancelled', reason='worker_cancelled' WHERE id=?",
                            (run_id,))
+                self._audit(db, tenant, "run_cancelled", run_id)
             elif row["state"] == "running":
                 self.executor.cancel(run_id)
+                self._audit(db, tenant, "cancellation_requested", run_id)
         return self.get_run(tenant, run_id)
 
     def packs(self, tenant):
@@ -282,6 +317,7 @@ class TrialService:
             if row is None:
                 return False
             db.execute("UPDATE jobs SET state='running' WHERE id=?", (row["id"],))
+            self._audit(db, row["tenant"], "run_started", row["id"])
         report, reason = None, None
         try:
             request = json.loads(row["request"])
@@ -302,14 +338,19 @@ class TrialService:
             # Provider exceptions may contain secrets. Only a stable code is persisted or returned.
             reason = "execution_interrupted"
         with self._db() as db:
-            db.execute("UPDATE jobs SET state=?, result=?, reason=? WHERE id=?", (
+            db.execute("UPDATE jobs SET state=?, result=?, reason=?, completed_at=? WHERE id=?", (
                 "completed" if report else ("cancelled" if reason == "worker_cancelled" else "interrupted"),
                 canonical(report) if report else None,
-                reason, row["id"]))
+                reason, datetime.now(UTC).isoformat(), row["id"]))
+            self._audit(db, row["tenant"], "run_completed" if report else "run_interrupted", row["id"],
+                        {"reason_code": reason})
         return True
 
     def _loop(self):
         while not self.stop.is_set():
+            if self.last_maintenance == 0 or time.monotonic() - self.last_maintenance > 3600:
+                self.maintain()
+                self.last_maintenance = time.monotonic()
             if not self.process_next():
                 self.wake.wait(0.25)
                 self.wake.clear()

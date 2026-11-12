@@ -3,7 +3,7 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header
+from fastapi import Depends, FastAPI, Header, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -16,6 +16,10 @@ class RunRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     test: dict
     candidates: list[Annotated[str, Field(min_length=1, max_length=64)]] = Field(min_length=1, max_length=4)
+
+
+class LookupRequest(RunRequest):
+    fresh: bool = False
 
 
 class BodyLimit:
@@ -83,6 +87,19 @@ def create_app(service: TrialService, background=True):
         result = service.submit(owner, body.test, body.candidates, key)
         return JSONResponse(result, status_code=202, headers={"Location": f'/runs/{result["run_id"]}'})
 
+    @app.get("/runs")
+    def history(owner: str = Depends(tenant), limit: int = Query(default=25, ge=1, le=100), before: str | None = None):
+        return service.history(owner, limit, before)
+
+    @app.get("/audit")
+    def audit(owner: str = Depends(tenant), limit: int = Query(default=50, ge=1, le=100),
+              before: int | None = Query(default=None, ge=1, le=2**63 - 1)):
+        return service.audit_events(owner, limit, before)
+
+    @app.post("/evidence/lookup")
+    def lookup(body: LookupRequest, owner: str = Depends(tenant)):
+        return service.lookup(owner, body.test, body.candidates, body.fresh)
+
     @app.get("/runs/{run_id}")
     def get_run(run_id: str, owner: str = Depends(tenant)):
         return service.get_run(owner, run_id)
@@ -102,5 +119,13 @@ def create_app(service: TrialService, background=True):
     @app.post("/runs/{run_id}/cancel")
     def cancel(run_id: str, owner: str = Depends(tenant)):
         return service.cancel(owner, run_id)
+
+    @app.post("/runs/{run_id}/revoke")
+    def revoke(run_id: str, owner: str = Depends(tenant)):
+        return service.revoke(owner, run_id)
+
+    @app.delete("/runs/{run_id}")
+    def delete(run_id: str, owner: str = Depends(tenant)):
+        return service.delete_run(owner, run_id)
 
     return app

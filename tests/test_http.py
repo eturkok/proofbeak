@@ -75,6 +75,36 @@ class HttpTests(unittest.TestCase):
         self.assertEqual(response.json()["state"], "cancelled")
         self.assertFalse(self.service.process_next())
 
+    def test_history_lookup_revocation_and_audit_are_scoped(self):
+        run_id = self.submit()
+        self.service.process_next()
+        found = self.client.post("/evidence/lookup", json={"test": self.spec, "candidates": ["filesystem"]},
+                                 headers=self.headers())
+        self.assertTrue(found.json()["reusable"])
+        foreign = self.client.post("/evidence/lookup", json={"test": self.spec, "candidates": ["filesystem"]},
+                                   headers=self.headers("b"))
+        self.assertFalse(foreign.json()["reusable"])
+        self.assertEqual(len(self.client.get("/runs", headers=self.headers()).json()["runs"]), 1)
+        self.assertEqual(self.client.get("/runs", headers=self.headers("b")).json()["runs"], [])
+        self.assertEqual(self.client.post(f"/runs/{run_id}/revoke", headers=self.headers("b")).status_code, 404)
+        self.assertEqual(self.client.post(f"/runs/{run_id}/revoke", headers=self.headers()).status_code, 200)
+        withdrawn = self.client.post("/evidence/lookup", json={"test": self.spec, "candidates": ["filesystem"]},
+                                     headers=self.headers())
+        self.assertFalse(withdrawn.json()["reusable"])
+        self.assertTrue(self.client.get("/audit", headers=self.headers()).json()["events"])
+        self.assertEqual(self.client.get("/audit", headers=self.headers("b")).json()["events"], [])
+
+    def test_deletion_requires_terminal_owned_run_and_reserves_its_key(self):
+        run_id = self.submit()
+        self.assertEqual(self.client.delete(f"/runs/{run_id}", headers=self.headers()).status_code, 409)
+        self.service.process_next()
+        self.assertEqual(self.client.delete(f"/runs/{run_id}", headers=self.headers("b")).status_code, 404)
+        self.assertEqual(self.client.delete(f"/runs/{run_id}", headers=self.headers()).status_code, 200)
+        self.assertEqual(self.client.get(f"/runs/{run_id}", headers=self.headers()).status_code, 410)
+        response = self.client.post("/runs", json={"test": self.spec, "candidates": ["filesystem"]},
+                                    headers=self.headers())
+        self.assertEqual(response.status_code, 410)
+
     def test_client_cannot_select_tenant_or_provider_credentials(self):
         for extra in [{"tenant_id": "b"}, {"profile": {"endpoint": "https://example.test"}},
                       {"access_token": "private-client-input"}]:

@@ -74,7 +74,8 @@ class McpIntegrationTests(unittest.TestCase):
                 listing = await session.list_tools()
                 tools = {tool.name: tool for tool in listing.tools}
                 self.assertEqual(set(tools), {"list_trial_packs", "run_trial", "get_run",
-                                             "compare_results", "get_evidence", "retry_cleanup", "cancel_run"})
+                    "compare_results", "get_evidence", "retry_cleanup", "cancel_run", "list_runs",
+                    "find_evidence", "revoke_evidence", "list_audit_events"})
                 self.assertNotIn("tenant_id", tools["run_trial"].inputSchema["properties"])
                 self.assertTrue(all(tool.outputSchema is not None for tool in tools.values()))
                 packs = await session.call_tool("list_trial_packs", {})
@@ -98,6 +99,16 @@ class McpIntegrationTests(unittest.TestCase):
                 evidence_id = comparison.structuredContent["candidates"][0]["evidence_ref"]
                 evidence = await session.call_tool("get_evidence", {"evidence_id": evidence_id})
                 self.assertIsNotNone(evidence.structuredContent["evidence"]["after"])
+                history = await session.call_tool("list_runs", {})
+                self.assertEqual([row["run_id"] for row in history.structuredContent["runs"]], [run_id])
+                reusable = await session.call_tool("find_evidence", {"test": spec, "candidates": ["filesystem"]})
+                self.assertTrue(reusable.structuredContent["reusable"])
+                revoked = await session.call_tool("revoke_evidence", {"run_id": run_id})
+                self.assertFalse(revoked.isError)
+                withdrawn = await session.call_tool("find_evidence", {"test": spec, "candidates": ["filesystem"]})
+                self.assertFalse(withdrawn.structuredContent["reusable"])
+                audit = await session.call_tool("list_audit_events", {})
+                self.assertTrue(audit.structuredContent["events"])
                 repeated = await session.call_tool("run_trial", {
                     "test": spec, "candidates": ["filesystem"], "idempotency_key": "stdio-test"})
                 self.assertEqual(repeated.structuredContent["run_id"], run_id)

@@ -5,7 +5,7 @@ import os
 import re
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urlsplit, urlencode
 from urllib.request import ProxyHandler, Request, build_opener
 
 from proofbeak.adapters.http import NoRedirect
@@ -118,6 +118,28 @@ def create_server(client):
     def cancel_run(run_id: str) -> dict[str, Any]:
         """Cancel this tenant's queued or executing run; never replay its writes."""
         return call("POST", client.run_path(run_id) + "/cancel")
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def list_runs(limit: int = 25, before: str | None = None) -> dict[str, Any]:
+        """Read this tenant's bounded run history; use the returned cursor for older rows."""
+        query = {"limit": limit, **({"before": before} if before else {})}
+        return call("GET", "/runs?" + urlencode(query))
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def find_evidence(test: dict, candidates: list[str], fresh: bool = False) -> dict[str, Any]:
+        """Find intact, unexpired, unrevoked real evidence in the exact current context; never create a run."""
+        return call("POST", "/evidence/lookup", {"test": test, "candidates": candidates, "fresh": fresh})
+
+    @server.tool(annotations=write, structured_output=True)
+    def revoke_evidence(run_id: str) -> dict[str, Any]:
+        """Prevent future reuse of this tenant's run while retaining its historical observations."""
+        return call("POST", client.run_path(run_id) + "/revoke")
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def list_audit_events(limit: int = 50, before: int | None = None) -> dict[str, Any]:
+        """Read this tenant's metadata-only audit history; credentials and fixture payloads are excluded."""
+        query = {"limit": limit, **({"before": before} if before else {})}
+        return call("GET", "/audit?" + urlencode(query))
 
     return server
 

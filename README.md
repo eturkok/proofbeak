@@ -200,6 +200,11 @@ production identity remain pending. Core CLI usage remains dependency-free.
 
 ## Next increments
 
+Run history, explicit context-bound evidence lookup, revocation, metadata audit, and the
+seven-day raw/thirty-day summary retention policy are implemented. See
+[evidence lifecycle and tenant removal](docs/evidence-lifecycle.md). Reuse never refreshes
+an observation's timestamp, and deleted idempotency keys cannot silently trigger a new write.
+
 1. Run the implemented Google adapter against a dedicated test account.
 2. Preserve the first actual Google/Radicale comparison under the identical fixture and package.
 3. Harden the implemented REST/MCP interfaces with isolated workers and production identity,

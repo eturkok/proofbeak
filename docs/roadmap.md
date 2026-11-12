@@ -45,6 +45,16 @@ not recorded development time. Weekly availability and external-account access s
 - [x] Terminate orphan workers and support tenant-bound cancellation without replaying writes.
 - [ ] Add container/network isolation, remote identity, and production data controls.
 
+## Evidence lifecycle increment
+
+- [x] Add bounded tenant history and explicit context-bound evidence lookup.
+- [x] Exclude expired, revoked, simulated, inconclusive, corrupt, and redacted records from reuse.
+- [x] Audit mutations and evidence access without credentials or fixture payloads.
+- [x] Apply seven-day raw and thirty-day summary/audit retention to both local database copies.
+- [x] Preserve minimal replay-prevention tombstones after run deletion.
+- [x] Add offline tenant purge and credential disabling after resource cleanup.
+- [ ] Validate actual two-team reuse demand and the planned decision-quality experiment.
+
 Do not claim a passing real provider or cross-provider comparison from simulation controls.
 Do not build the public hub, pricing, generic natural-language compiler, or multi-DC deployment
 before evidence of repeated demand.

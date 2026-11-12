@@ -67,6 +67,11 @@ def main(argv=None):
     serve = commands.add_parser("serve", help="run one loopback-only REST worker")
     serve.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     serve.add_argument("--port", type=int, default=8765)
+    maintain = commands.add_parser("maintain", help="apply local evidence retention while the API is stopped")
+    maintain.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
+    purge = commands.add_parser("purge-tenant", help="erase a tenant's stored data after resource cleanup")
+    purge.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
+    purge.add_argument("--tenant", required=True)
     args = parser.parse_args(argv)
     if args.command == "init":
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.tenant):
@@ -81,6 +86,15 @@ def main(argv=None):
         with os.fdopen(descriptor, "w") as destination:
             destination.write(json.dumps(config, indent=2) + "\n")
         print(f"Tenant: {args.tenant}\nAPI key (shown once): {token}")
+        return 0
+    if args.command in {"maintain", "purge-tenant"}:
+        service = load_service(args.config)
+        service.start(background=False)
+        try:
+            result = service.maintain() if args.command == "maintain" else service.purge_tenant(args.tenant)
+            print(json.dumps(result, indent=2))
+        finally:
+            service.close()
         return 0
     try:
         import uvicorn

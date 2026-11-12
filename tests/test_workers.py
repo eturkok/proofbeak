@@ -7,6 +7,7 @@ import time
 import unittest
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 from threading import Thread
 from unittest.mock import patch
@@ -112,6 +113,7 @@ class WorkerTests(unittest.TestCase):
     def test_worker_stops_when_its_api_parent_disappears(self):
         script = '''
 import json, sqlite3, sys, time
+from contextlib import closing
 from pathlib import Path
 from threading import Thread
 from proofbeak.adapters.simulation import SimulationAdapter
@@ -123,7 +125,7 @@ Thread(target=lambda: executor.run(spec, [SimulationAdapter("hang")], root / "or
 deadline = time.monotonic() + 5
 while time.monotonic() < deadline:
     try:
-        with sqlite3.connect(root / "orphan.sqlite3") as db:
+        with closing(sqlite3.connect(root / "orphan.sqlite3")) as db, db:
             ready = db.execute("SELECT COUNT(*) FROM resources").fetchone()[0] == 1
         if ready and executor.active:
             (root / "child.pid").write_text(str(next(iter(executor.active))))
@@ -245,7 +247,7 @@ class WorkerServiceTests(unittest.TestCase):
         self.assertEqual(run["state"], "interrupted")
         self.assertEqual(run["reason_code"], "worker_crashed")
         self.assertEqual(run["candidates"], [])
-        with sqlite3.connect(self.service.root / "queue.sqlite3") as db:
+        with closing(sqlite3.connect(self.service.root / "queue.sqlite3")) as db, db:
             self.assertIsNone(db.execute("SELECT result FROM jobs WHERE id=?", (run_id,)).fetchone()[0])
 
 
