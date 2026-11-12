@@ -33,6 +33,16 @@ not recorded development time. Weekly availability and external-account access s
 - [x] Add a protocol-tested Google adapter for the unchanged calendar package.
 - [ ] Verify it on a dedicated real Google account and preserve cross-provider evidence.
 
+## Agent interface increment
+
+- [x] Add FastAPI/Pydantic REST around a shared application service.
+- [x] Persist a tenant-scoped queue before returning 202.
+- [x] Bind tenant identity to the authenticated key, with provider allowlists and queue budgets.
+- [x] Expose structured run, comparison, evidence, and cleanup tools over MCP stdio.
+- [x] Stop interrupted jobs from being replayed after a worker restart.
+- [x] Implement real REST/MCP protocol integration checks and make them mandatory in CI.
+- [ ] Add separate isolated workers, remote identity, hard deadlines, and production data controls.
+
 Do not claim a passing real provider or cross-provider comparison from simulation controls.
 Do not build the public hub, pricing, generic natural-language compiler, or multi-DC deployment
 before evidence of repeated demand.

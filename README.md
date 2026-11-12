@@ -180,12 +180,29 @@ The initial real-server integration and the Python 3.11/3.13/3.14 core jobs
 The integration job also saves its JSON/HTML observations as a `radicale-trial-evidence`
 artifact; the records contain synthetic calendar data and no account password.
 
+## Agent interfaces
+
+The optional REST service and authenticated MCP stdio bridge expose the same trial packages
+to external agents. Runs are tenant-bound, queued durably, and protected by scoped
+idempotency keys. A restarted worker never blindly replays an interrupted write.
+
+```bash
+python -m pip install -e '.[agents]'
+proofbeak-server init --tenant demo
+proofbeak-server serve
+```
+
+Supply the one-time issued API key to your client/MCP host locally. See
+[agent interface setup, tools, and recovery](docs/agent-interfaces.md). The built-in launcher
+is a loopback-only, single-worker prototype; production worker/network isolation is still
+pending. Core CLI usage remains dependency-free.
+
 ## Next increments
 
 1. Run the implemented Google adapter against a dedicated test account.
 2. Preserve the first actual Google/Radicale comparison under the identical fixture and package.
-3. Add FastAPI/Pydantic REST and MCP interfaces around the same execution service, with
-   tenant-bound authorization and asynchronous run tracking.
+3. Harden the implemented REST/MCP interfaces with isolated workers and production identity,
+   deadlines, audit, and retention controls.
 4. Validate real selection decisions with pilot developers before building the private hub.
 
 See [architecture](docs/architecture.md), [milestones](docs/roadmap.md),
