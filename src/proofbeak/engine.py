@@ -63,8 +63,8 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str,
             store.cleaned(run_id, adapter.name, cleanup_status)
         now = datetime.now(UTC)
         evidence = {
-            "before": before.to_dict() if before else None,
-            "after": after.to_dict() if after else None,
+            "before": before.to_dict() if before is not None else None,
+            "after": after.to_dict() if after is not None else None,
         }
         result = {
             "provider": adapter.name, "adapter_version": adapter.version,

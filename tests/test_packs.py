@@ -122,6 +122,7 @@ class PackTests(unittest.TestCase):
         for expected, observed in [(True, 1), ([1], [True]), ({"x": True}, {"x": 1})]:
             self.assertFalse(equal(expected, observed))
         self.assertTrue(equal(60, 60.0))
+        self.assertTrue(equal(10 ** 1000, 10 ** 1000))
 
     def test_nonfinite_metrics_cannot_pass(self):
         self.assertFalse(equal(float("inf"), float("inf")))
@@ -133,6 +134,9 @@ class PackTests(unittest.TestCase):
         class Observation:
             source: str = "independent-provider"
             observed_at: str = "now"
+
+            def __bool__(self):
+                return False
 
             def to_dict(self):
                 return {"scalar": 7, "source": self.source, "observed_at": self.observed_at}
@@ -172,6 +176,8 @@ class PackTests(unittest.TestCase):
         spec = {"id": Pack.id, "fixture": {"scalar": 7}}
         result = run_trial(spec, [Adapter()], self.store, "custom", PackRegistry([Pack()]))
         self.assertEqual(result["candidates"][0]["verdict"], "pass")
+        self.assertIsNotNone(result["candidates"][0]["evidence"]["before"])
+        self.assertIsNotNone(result["candidates"][0]["evidence"]["after"])
 
     def test_wrong_observation_type_is_inconclusive(self):
         pack, trial = builtins().prepare(self.spec)
