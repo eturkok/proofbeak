@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ruff_cache/
+.env
+.env.*
+!.env.example
+.proofbeak/
+reports/
+dist/
+build/
+.DS_Store
