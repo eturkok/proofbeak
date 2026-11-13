@@ -3,6 +3,7 @@
 from typing import Protocol
 
 from proofbeak.models import Observation
+from proofbeak.validation import TrialValidationError
 
 
 class TrialPack(Protocol):
@@ -24,10 +25,11 @@ class PackRegistry:
 
     def prepare(self, spec: dict):
         if not isinstance(spec, dict) or not isinstance(spec.get("id"), str):
-            raise ValueError("trial needs a registered id")
+            raise TrialValidationError("trial needs a registered id", code="invalid_trial_id",
+                                       path=["id"] if isinstance(spec, dict) else [])
         pack = self.packs.get(spec["id"])
         if pack is None:
-            raise ValueError("unsupported trial id")
+            raise TrialValidationError("unsupported trial id", code="unsupported_trial_id", path=["id"])
         return pack, pack.parse(spec)
 
     def describe(self):

@@ -14,8 +14,8 @@ from proofbeak.report import render_html
 
 
 class ClientError(Exception):
-    def __init__(self, code, run_id=None, key_prefix=None):
-        self.code, self.run_id, self.key_prefix = code, run_id, key_prefix
+    def __init__(self, code, run_id=None, key_prefix=None, issues=None):
+        self.code, self.run_id, self.key_prefix, self.issues = code, run_id, key_prefix, issues
 
 
 def grouped_client_error(error):
@@ -71,18 +71,19 @@ async def compare(args):
                         raise ClientError("invalid_trial")
                     if len(set(args.candidate)) != len(args.candidate) or len(args.candidate) > 4:
                         raise ClientError("invalid_candidates")
+                    tools = await session.list_tools()
+                    can_validate = any(tool.name == "validate_trial" for tool in tools.tools)
                     for name in args.candidate:
                         if name not in catalog["providers"]:
                             raise ClientError("candidate_not_allowed")
                         capabilities = catalog["provider_capabilities"].get(name, {})
                         if not capabilities.get("configured") \
-                                or spec["id"] not in capabilities.get("supported_trials", []):
+                                or (not can_validate and spec["id"] not in capabilities.get("supported_trials", [])):
                             raise ClientError("candidate_not_configured_or_compatible")
-                    tools = await session.list_tools()
-                    if any(tool.name == "validate_trial" for tool in tools.tools):
+                    if can_validate:
                         validation = await call("validate_trial", {"test": spec, "candidates": args.candidate})
                         if not validation.get("valid"):
-                            raise ClientError("invalid_trial_definition")
+                            raise ClientError("invalid_trial_definition", issues=validation.get("issues", []))
                     created = await call("run_trial", {
                         "test": spec, "candidates": args.candidate, "idempotency_key": args.key})
                     run_id = created["run_id"]
@@ -156,6 +157,7 @@ def main(argv=None):
         return 1 if any(c["verdict"] == "fail" for c in report["candidates"]) else 0
     except ClientError as error:
         print(json.dumps({"error": error.code, "run_id": error.run_id,
+                          **({"issues": error.issues} if error.issues is not None else {}),
                           **({"idempotency_key_prefix": error.key_prefix} if error.key_prefix else {})}), file=sys.stderr)
         return 2 if error.run_id or error.code == "wait_timed_out" else 3
     except ImportError:

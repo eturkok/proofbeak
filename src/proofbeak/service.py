@@ -22,6 +22,7 @@ from proofbeak.lifecycle import EvidenceLifecycle
 from proofbeak.observer import OBSERVER_VERSION
 from proofbeak.packs import builtins
 from proofbeak.recovery import file_lock
+from proofbeak.validation import candidate_issues, issue_from, validation_result
 
 
 class ServiceError(Exception):
@@ -232,24 +233,23 @@ class TrialService(EvidenceLifecycle):
         return {"run_id": run_id, "state": "queued"}
 
     def validate_trial(self, tenant, spec, candidates):
-        self._adapters(tenant, candidates)  # Enforce authorization before returning authoring diagnostics.
+        adapters = self._adapters(tenant, candidates)  # Authorize before authoring diagnostics.
         try:
             if len(canonical({"test": spec, "candidates": candidates}).encode()) > 65536:
                 raise ServiceError("request_too_large", 413)
-            builtins().prepare(spec)
+            pack, trial = builtins().prepare(spec)
         except (ValueError, TypeError, RecursionError) as error:
-            return {"valid": False, "issues": [{"code": "invalid_definition", "message": str(error)[:200]}],
-                    "execution_performed": False, "provider_access_checked": False}
+            return validation_result([issue_from(error)])
+        issues = candidate_issues(pack, trial, adapters)
+        if issues:
+            return validation_result(issues)
         try:
-            context = self._context(tenant, spec, candidates)
-        except ServiceError as error:
-            if error.status != 422:
-                raise
-            return {"valid": False, "issues": [{"code": error.code}],
-                    "execution_performed": False, "provider_access_checked": False}
-        return {"valid": True, "pack_id": context["pack_id"], "pack_version": context["pack_version"],
-                "test_hash": fingerprint(spec), "candidates": candidates, "issues": [],
-                "execution_performed": False, "provider_access_checked": False}
+            self.executor.validate(adapters)
+        except ValueError:
+            return validation_result([{"code": "unsupported_worker_adapter", "path": [],
+                                       "message": "Candidate has no registered worker codec."}])
+        return validation_result([], pack_id=pack.id, pack_version=pack.version,
+                                 test_hash=fingerprint(spec), candidates=candidates)
 
     def _row(self, tenant, run_id):
         if not isinstance(run_id, str) or not re.fullmatch(r"[a-f0-9]{32}", run_id):

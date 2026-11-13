@@ -65,6 +65,25 @@ class ScenarioIntegrationTests(WebDAVFixtures, unittest.TestCase):
                         if api.poll() is not None or time.monotonic() >= deadline:
                             self.fail("scenario REST server did not become ready")
                         time.sleep(.05)
+                invalid = json.loads((ROOT / "examples/scenario.delete_and_preserve.json").read_text())
+                invalid["steps"][0]["args"]["key"] = {"ref": ["fixture", "private-authoring-canary"]}
+                definition = self.root / "invalid-definition.json"
+                definition.write_text(json.dumps(invalid))
+                unwanted = self.root / "must-not-exist.json"
+                command = [sys.executable, str(ROOT / "examples/mcp_compare.py"), "--spec", str(definition),
+                           "--key", "not-reserved-by-validation", "--output", str(unwanted)]
+                for candidate in CANDIDATES:
+                    command += ["--candidate", candidate]
+                result = subprocess.run(command, env=bridge_env, cwd=ROOT, capture_output=True, text=True, timeout=60)
+                self.assertEqual(result.returncode, 3)
+                diagnostic = json.loads(result.stderr.splitlines()[-1])
+                self.assertEqual(diagnostic["error"], "invalid_trial_definition")
+                self.assertEqual(diagnostic["issues"][0]["path"], ["steps", 0, "args", "key", "ref"])
+                self.assertNotIn("private-authoring-canary", json.dumps(diagnostic))
+                self.assertFalse(unwanted.exists())
+                self.assertEqual(client.request("GET", "/runs")["runs"], [])
+                self.assertTrue(all(not rows for rows in self.mutations().values()))
+                (output / "authoring-validation.json").write_text(json.dumps(diagnostic, indent=2) + "\n")
                 asyncio.run(self.session(bridge_env, output))
                 for path in output.iterdir():
                     if path.suffix in {".json", ".html"}:
@@ -121,7 +140,8 @@ class ScenarioIntegrationTests(WebDAVFixtures, unittest.TestCase):
                 invalid["steps"][0]["op"] = "shell.exec"
                 validation = await call("validate_trial", {"test": invalid, "candidates": CANDIDATES})
                 self.assertFalse(validation["valid"])
-                self.assertTrue(validation["issues"])
+                self.assertEqual(validation["issues"][0]["path"], ["steps", 0, "op"])
+                self.assertEqual(validation["issues"][0]["code"], "unsupported_operation")
                 self.assertEqual((await call("list_runs", {}))["runs"], [])
                 self.assertTrue(all(not rows for rows in self.mutations().values()))
 

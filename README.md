@@ -87,7 +87,7 @@ flow, including discovery, execution, evidence verification and JSON/HTML export
 
 ## What works today?
 
-Version **0.5.0** supports user-defined scenarios over these reusable capabilities:
+Version **0.5.1** supports user-defined scenarios over these reusable capabilities:
 
 | Capability | Candidates | What you define |
 | --- | --- | --- |

@@ -70,7 +70,8 @@ class HttpTests(unittest.TestCase):
         invalid["test"]["steps"][0]["op"] = "arbitrary.code"
         checked = self.client.post("/trials/validate", json=invalid, headers=self.headers()).json()
         self.assertFalse(checked["valid"])
-        self.assertTrue(checked["issues"])
+        self.assertEqual(checked["issues"][0]["path"], ["steps", 0, "op"])
+        self.assertEqual(checked["issues"][0]["code"], "unsupported_operation")
         self.assertEqual(self.client.post("/runs", json=invalid, headers=self.headers()).status_code, 422)
         self.assertFalse(provider_root.exists())
         created = self.client.post("/runs", json=payload, headers=self.headers())

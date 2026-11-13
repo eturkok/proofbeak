@@ -54,6 +54,16 @@ only a definition; unsupported protocols or operations remain trusted connector 
 human-pilot, external agent decision-quality and demand gates remain open. This increment
 does not enable arbitrary HTTP writes, executable scripts or a natural-language compiler.
 
+## Scenario authoring feedback 0.5.1
+
+- [x] Locate invalid operations, arguments, references and conditions within the caller's definition.
+- [x] Identify each incompatible candidate and its first unsupported operation/route/parameters.
+- [x] Expose structured CLI validation and preserve diagnostics through REST/MCP and the example client.
+- [x] Verify repair-then-run behavior and mutation-free rejection without echoing input values.
+
+This improves the caller-owned scenario workflow without adding case-specific product code,
+new connectors or a natural-language compiler. Human-pilot gates below remain open.
+
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
 | Foundation | First 12 h | Closed fixture, CLI, real self-hosted observations, two real user selection questions | `feat/storage-provider-comparison` |
