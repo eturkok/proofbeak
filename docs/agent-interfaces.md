@@ -15,6 +15,9 @@ proofbeak-server serve --config .proofbeak/server.json --port 8765
 Initialization creates one filesystem-only tenant and prints a random API key once. Copy it
 into the local environment of the REST client or MCP host as `PROOFBEAK_API_TOKEN`. The
 configuration file stores only its SHA-256, is created with mode 0600, and is never overwritten.
+Use `init --providers examples/storage.providers.json` to import a registered operator-owned
+provider map instead. The [MCP walkthrough](mcp-walkthrough.md) covers two real storage
+services, a runnable client, evidence exports and retry behavior.
 The state directory must be private to its owner (0700). Keep the configuration and state
 outside version control. Neither CLI core nor the server requires an external LLM.
 

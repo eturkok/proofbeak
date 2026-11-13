@@ -70,6 +70,8 @@ servers are integration fixtures rather than mandatory product backends.
 
 See [the storage comparison walkthrough](docs/storage-comparison.md) for loopback Compose
 fixtures, CLI/REST configuration and the exact limits of this acceptance condition.
+For a complete agent workflow, use the [runnable MCP comparison client](docs/mcp-walkthrough.md)
+to discover candidates, run the trial, verify evidence and export JSON/HTML.
 
 ## Optional Google Calendar adapter
 
@@ -222,7 +224,7 @@ seven-day raw/thirty-day summary retention policy are implemented. See
 [evidence lifecycle and tenant removal](docs/evidence-lifecycle.md). Reuse never refreshes
 an observation's timestamp, and deleted idempotency keys cannot silently trigger a new write.
 
-1. Verify the repeated-write case against WsgiDAV and Apache and preserve independent observations.
+1. Use the verified repeated-write case and MCP client to collect concrete selection questions.
 2. Collect actual developer selection questions and use the prepared pilot evaluation protocol.
 3. Add production identity when a remote pilot requires it; container and Helm CI checks pass.
 4. Keep optional calendar/cloud integrations separate from primary product exit criteria.

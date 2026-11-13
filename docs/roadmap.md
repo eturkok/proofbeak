@@ -62,6 +62,8 @@ not required by the primary storage case or the generic product.
 
 ## Agent interface increment
 
+- [x] Add a runnable MCP comparison/export client and operator profile import.
+- [x] Add mandatory MCP-to-WebDAV workflow checks with independent provider mutation journals.
 - [x] Add FastAPI/Pydantic REST around a shared application service.
 - [x] Persist a tenant-scoped queue before returning 202.
 - [x] Bind tenant identity to the authenticated key, with provider allowlists and queue budgets.

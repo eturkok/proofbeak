@@ -1,0 +1,13 @@
+{
+  "filesystem": {},
+  "webdav:wsgidav": {
+    "endpoint": "http://127.0.0.1:8801",
+    "username": "proofbeak",
+    "password_env": "PROOFBEAK_WEBDAV_WSGIDAV_PASSWORD"
+  },
+  "webdav:apache": {
+    "endpoint": "http://127.0.0.1:8802",
+    "username": "proofbeak",
+    "password_env": "PROOFBEAK_WEBDAV_APACHE_PASSWORD"
+  }
+}

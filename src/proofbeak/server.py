@@ -29,17 +29,28 @@ def provider_factory(name, settings, root, tenant_id):
         return lambda: SimulationAdapter(mode)
     if name.startswith("webdav:"):
         keys(settings, {"endpoint", "username", "password_env"}, "WebDAV settings")
+        WebDAVAdapter(name, settings["endpoint"], settings["username"], "profile-validation")
+        credential_variables(settings, "password_env")
         return lambda: WebDAVAdapter(name, settings["endpoint"], settings["username"],
                                     os.environ.get(settings["password_env"], ""))
     if name == "radicale":
         keys(settings, {"endpoint", "username", "password_env"}, "Radicale settings")
+        RadicaleAdapter(settings["endpoint"], settings["username"], "profile-validation")
+        credential_variables(settings, "password_env")
         return lambda: RadicaleAdapter(settings["endpoint"], settings["username"],
                                         os.environ.get(settings["password_env"], ""))
     if name == "google-calendar":
         keys(settings, {"access_token_env", "test_account_env"}, "Google settings")
+        credential_variables(settings, "access_token_env", "test_account_env")
         return lambda: GoogleCalendarAdapter(os.environ.get(settings["access_token_env"], ""),
                                               os.environ.get(settings["test_account_env"], ""))
     raise ValueError("unknown configured provider")
+
+
+def credential_variables(settings, *names):
+    for name in names:
+        if not isinstance(settings[name], str) or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,127}", settings[name]):
+            raise ValueError("invalid credential environment variable")
 
 
 def load_service(config_path):
@@ -65,10 +76,12 @@ def load_service(config_path):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="proofbeak-server")
     commands = parser.add_subparsers(dest="command", required=True)
-    init = commands.add_parser("init", help="create a local filesystem-only tenant and print its key once")
+    init = commands.add_parser("init", help="create a local tenant and print its key once")
     init.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     init.add_argument("--state", type=Path, default=Path(".proofbeak/server"))
     init.add_argument("--tenant", default="demo")
+    init.add_argument("--providers", type=Path,
+                      help="import an operator-owned registered provider map; default is filesystem only")
     serve = commands.add_parser("serve", help="run one REST coordinator (loopback by default)")
     serve.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     serve.add_argument("--port", type=int, default=8765)
@@ -82,10 +95,26 @@ def main(argv=None):
     if args.command == "init":
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.tenant):
             parser.error("invalid tenant id")
+        providers = {"filesystem": {}}
+        if args.providers:
+            try:
+                if args.providers.stat().st_size > 65536:
+                    raise ValueError("oversized provider map")
+                providers = json.loads(args.providers.read_text())
+                if not isinstance(providers, dict) or not providers or len(providers) > 32:
+                    raise ValueError("invalid provider map")
+                for name, settings in providers.items():
+                    if not isinstance(name, str) or not isinstance(settings, dict):
+                        raise ValueError("invalid provider map")
+                    provider_factory(name, settings, args.state.resolve(), args.tenant)
+            except (ValueError, TypeError, OSError):
+                parser.error("provider file must contain one to 32 registered provider profiles, at most 64 KiB")
         token = secrets.token_urlsafe(32)
         config = {"state_dir": str(args.state.resolve()), "tenants": [{
             "id": args.tenant, "token_sha256": hashlib.sha256(token.encode()).hexdigest(),
-            "providers": {"filesystem": {}}}]}
+            "providers": providers}]}
+        if len(json.dumps(config).encode()) > 65536:
+            parser.error("combined server configuration exceeds 64 KiB")
         args.config.parent.mkdir(parents=True, exist_ok=True)
         # Never overwrite an existing tenant configuration or issue a token silently.
         descriptor = os.open(args.config, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
