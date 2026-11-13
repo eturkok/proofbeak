@@ -74,8 +74,10 @@ def create_app(service: TrialService, background=True):
 
     @app.get("/health")
     def health():
-        ready = service.lock is not None and (not background or service.worker.is_alive())
-        return JSONResponse({"status": "ready" if ready else "unavailable"},
+        ready = service.available
+        return JSONResponse({"status": "ready" if ready else "unavailable",
+                             "maintenance": "deferred" if service.maintenance_deferred else "ok",
+                             "reason_code": service.coordinator_failure},
                             status_code=200 if ready else 503)
 
     @app.get("/packs")

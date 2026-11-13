@@ -62,6 +62,8 @@ class TrialService(EvidenceLifecycle):
         self.stop = Event()
         self.wake = Event()
         self.last_maintenance = 0
+        self.maintenance_deferred = False
+        self.coordinator_failure = None
         with self._db() as db:
             db.execute("""CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY, tenant TEXT NOT NULL, client_key TEXT NOT NULL,
@@ -97,6 +99,7 @@ class TrialService(EvidenceLifecycle):
             db.execute("UPDATE jobs SET state='interrupted', reason='recovery_required' "
                        "WHERE state='running'")
         self.stop.clear()
+        self.coordinator_failure = None
         self.executor.reset()
         if background:
             self.worker = Thread(target=self._loop, name="proofbeak-worker", daemon=False)
@@ -163,7 +166,7 @@ class TrialService(EvidenceLifecycle):
                                "evidence_level": a.evidence_level} for a in adapters]}
 
     def submit(self, tenant, spec, candidates, key):
-        if self.lock is None:
+        if not self.available:
             raise ServiceError("service_unavailable", 503)
         if not isinstance(key, str) or not 1 <= len(key) <= 128:
             raise ServiceError("invalid_idempotency_key", 422)
@@ -181,6 +184,11 @@ class TrialService(EvidenceLifecycle):
         request_hash = fingerprint({"request": json.loads(request), "context": context})
         with self._db() as db:
             db.execute("BEGIN IMMEDIATE")
+            # Deletion may commit while provider context is being validated. Check again
+            # under the same write transaction that reserves the key.
+            if db.execute("SELECT 1 FROM tombstones WHERE tenant=? AND key_hash=?",
+                          (tenant, fingerprint(key))).fetchone():
+                raise ServiceError("run_deleted", 410)
             row = db.execute("SELECT * FROM jobs WHERE tenant=? AND client_key=?", (tenant, key)).fetchone()
             if row:
                 if row["request_hash"] != request_hash:
@@ -346,11 +354,31 @@ class TrialService(EvidenceLifecycle):
                         {"reason_code": reason})
         return True
 
+    @property
+    def available(self):
+        return self.lock is not None and not self.stop.is_set() and self.coordinator_failure is None \
+            and (self.worker is None or self.worker.is_alive())
+
     def _loop(self):
         while not self.stop.is_set():
-            if self.last_maintenance == 0 or time.monotonic() - self.last_maintenance > 3600:
-                self.maintain()
-                self.last_maintenance = time.monotonic()
-            if not self.process_next():
+            now = time.monotonic()
+            interval = 60 if self.maintenance_deferred else 3600
+            if self.last_maintenance == 0 or now - self.last_maintenance >= interval:
+                try:
+                    self.maintain()
+                    self.maintenance_deferred = False
+                except (OSError, sqlite3.Error, ServiceError):
+                    # A temporary retention failure must not kill the dispatcher or
+                    # print potentially credential-bearing exception messages.
+                    self.maintenance_deferred = True
+                self.last_maintenance = now
+            try:
+                processed = self.process_next()
+            except Exception:
+                # A claim/result persistence error needs operator recovery, not replay.
+                # Fail readiness and new submissions without logging raw state/errors.
+                self.coordinator_failure = "coordinator_failed"
+                return
+            if not processed:
                 self.wake.wait(0.25)
                 self.wake.clear()

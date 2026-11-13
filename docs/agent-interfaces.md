@@ -29,6 +29,12 @@ apply network controls outside the API. The container explicitly sets `--host 0.
 the Compose host port remains loopback-only and the Helm Service is ClusterIP. See
 [deployment configuration](deployment.md).
 
+Readiness and new submissions fail closed when the coordinator has stopped. A dispatch or
+result-persistence failure reports the safe `coordinator_failed` reason; the operator repairs
+storage and restarts the service, then inspects interrupted runs without replaying writes.
+Transient retention errors retry after sixty seconds while trial dispatch continues;
+`/health` reports `maintenance: deferred` until maintenance succeeds. No raw error is exposed.
+
 ## REST contract
 
 | Method and path | Behavior |

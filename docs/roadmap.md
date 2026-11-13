@@ -33,6 +33,9 @@ onboarding speed, adoption, two-team reuse demand or improved agent decisions.
 
 ## Foundation status
 
+Technical hardening toward the next stable release is tracked in
+[stability scope and release checks](stability.md). Human-pilot gates remain independently open.
+
 - [x] Fixed four-occurrence Istanbul fixture and explicit acceptance conditions.
 - [x] Dependency-free local CLI and deterministic observer.
 - [x] Fault controls: correct, move-all, duplicate, permission-denied, ambiguous write.

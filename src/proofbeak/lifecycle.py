@@ -55,12 +55,14 @@ class EvidenceLifecycle:
 
         with self.operation_guard:
             lock = self.operation_locks.setdefault(run_id, Lock())
-        if not lock.acquire(blocking=False):
-            raise ServiceError("run_still_active", 409)
+            if not lock.acquire(blocking=False):
+                raise ServiceError("run_still_active", 409)
         try:
             yield
         finally:
-            lock.release()
+            with self.operation_guard:
+                lock.release()
+                del self.operation_locks[run_id]
 
     def _audit(self, db, tenant, event, run_id=None, detail=None):
         db.execute("INSERT INTO audit (tenant,run_id,event,detail,created_at) VALUES (?,?,?,?,?)",
