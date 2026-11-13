@@ -94,6 +94,11 @@ and checks permission failures. Image identities and fixture settings accompany 
 storage-provider-comparison-evidence. These are real provider observations over synthetic
 data, not a human pilot or a measured improvement in agent decisions.
 
+Both real HTTP providers and the filesystem reference passed the ASCII/UTF-8 comparisons,
+idempotent retrieval, cleanup and permission checks in
+[CI run 43381751390](https://github.com/eturkok/proofbeak/actions/runs/43381751390).
+The fixture-environment.json artifact records the exact container images used.
+
 To run that job's integration locally, build both disposable fixture images:
 
     docker build -f deploy/Dockerfile.webdav-apache -t proofbeak-webdav-apache:test .

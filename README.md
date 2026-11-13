@@ -56,8 +56,8 @@ PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
 ```
 
 The filesystem trial uses a generated disposable directory under `.proofbeak/storage` and
-reads actual directory entries and file contents before cleanup. It demonstrates a second
-domain using the same worker; its result describes this local adapter and filesystem,
+reads actual directory entries and file contents before cleanup through the same generic
+worker; its result describes this local adapter and filesystem,
 not a remote object store such as S3. `PROOFBEAK_FILESYSTEM_ROOT` can configure the test root.
 Read [the package contract](docs/trial-packs.md) to extend the built-in registry.
 

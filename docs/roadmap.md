@@ -43,10 +43,11 @@ Google account access is not a primary development or pilot prerequisite.
 
 - [x] Reuse the closed storage.put_same_key.v1 package for a repeated key/content write.
 - [x] Implement a standard WebDAV adapter with independent PROPFIND/GET observations.
-- [x] Guard writes with observed ETags and cleanup with an owned-collection marker.
+- [x] Keep writes within owned existing objects, using strong ETags when available.
+- [x] Guard cleanup with an owned-collection marker.
 - [x] Support operator-owned WebDAV profiles through CLI, service and subprocess codecs.
 - [x] Add actual WsgiDAV/Apache fixtures and a mandatory comparison/evidence CI job.
-- [ ] Run the two-service comparison and retain its JSON/HTML evidence.
+- [x] Run the two-service comparison and retain its JSON/HTML evidence (CI run 43381751390).
 
 The comparison checks one test-data key and its content. It does not establish exact-once
 execution, hidden version-history deduplication, crash durability or concurrent-writer safety.
