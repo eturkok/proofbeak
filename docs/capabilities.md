@@ -37,7 +37,7 @@ is POST. External MCP tool annotations do not grant permission to run a mutation
 Install the connector extra (Python 3.11+ on Linux/macOS):
 
 ```bash
-python -m pip install 'proofbeak[connectors]==0.8.0'
+python -m pip install 'proofbeak[connectors]==0.8.1'
 proofbeak example --trial scenario.v2 --output scenario-v2.json
 ```
 

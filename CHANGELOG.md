@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.1 — 2026-11-14
+
+- Apply the parliament-blue and orange brand palette throughout Studio: navigation, primary
+  actions, overview, visual/JSON editor, service forms, dialogs and sign-in screen.
+- Use dark blue text on orange controls, legible muted text on light surfaces and distinct
+  pass/fail status colors. Match the icon and browser theme color to the workspace.
+- Keep the existing desktop/mobile layout, operation and authentication contracts.
+
 ## 0.8.0 — 2026-11-14
 
 Make caller-defined acceptance tests usable from a self-hosted browser workspace and repeatable
