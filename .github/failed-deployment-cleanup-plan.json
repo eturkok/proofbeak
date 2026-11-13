@@ -1,0 +1,43 @@
+{
+  "repository": "eturkok/proofbeak",
+  "deployments": [
+    {
+      "id": 7770079135,
+      "environment": "pypi",
+      "sha": "28afca67fff11462adf1898205d900304efd5dcb",
+      "states": ["failure", "in_progress"]
+    },
+    {
+      "id": 7768126754,
+      "environment": "pypi",
+      "sha": "28afca67fff11462adf1898205d900304efd5dcb",
+      "states": ["failure", "in_progress"]
+    }
+  ],
+  "workflow_runs": [
+    {
+      "id": 43313214771,
+      "name": "Deployment checks",
+      "sha": "ad609b444e38a5d94580d20d58a957a060c4dae6"
+    },
+    {
+      "id": 43387893520,
+      "name": "Deployment checks",
+      "sha": "c0af52d357f9a25d200c95816ebf7f430ad4150a"
+    }
+  ],
+  "preserved_deployments": [
+    {
+      "id": 7771886421,
+      "environment": "pypi",
+      "sha": "7924e0d067c616e16c43000cb0c162ea2fdbe61f",
+      "states": ["success", "in_progress"]
+    },
+    {
+      "id": 7770175662,
+      "environment": "pypi",
+      "sha": "28afca67fff11462adf1898205d900304efd5dcb",
+      "states": ["inactive", "success", "in_progress"]
+    }
+  ]
+}

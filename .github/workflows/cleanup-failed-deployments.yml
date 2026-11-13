@@ -7,8 +7,8 @@ on:
 
 permissions:
   contents: read
-  actions: read
-  deployments: read
+  actions: write
+  deployments: write
 
 concurrency:
   group: proofbeak-failed-deployment-cleanup
@@ -24,10 +24,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Audit failed deployments without deleting
+      - name: Delete only the audited failed deployment records
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python .github/cleanup_failed_deployments.py
+        run: python .github/cleanup_failed_deployments.py --apply
       - uses: actions/upload-artifact@v4
         if: always()
         with:
