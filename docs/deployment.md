@@ -138,6 +138,7 @@ Actual IPv4 TCP probes must demonstrate all of these conditions:
 - A labeled client reaches the API health endpoint; an unlabeled client cannot.
 - A control client reaches a healthy synthetic sink while the API pod's default egress is denied.
 - An explicit chart egress rule permits the API pod to reach only that selected sink/port.
+- Healthy sinks on another port or without the selected label remain unreachable during that allow.
 - Removing the rule restores the denial while the control client still reaches the sink.
 
 Rules are changed through helm upgrade against the actual chart, with bounded waits for policy
