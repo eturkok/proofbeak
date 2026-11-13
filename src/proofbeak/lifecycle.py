@@ -21,6 +21,13 @@ def timestamp(value):
 
 def redact_report(report):
     redacted = json.loads(canonical(report))
+    if report.get("schema_version") == "proofbeak.suite-report.v1":
+        for entry in redacted["entries"]:
+            entry["parameters"] = {}
+            if entry.get("report"):
+                entry["report"] = redact_report(entry["report"])
+        redacted["raw_retained"] = False
+        return redacted
     redacted["test"] = {"id": report["test"]["id"], "redacted": True}
     for candidate in redacted["candidates"]:
         candidate["evidence"] = None
@@ -279,8 +286,9 @@ class EvidenceLifecycle:
                 counts["deferred"] += 1
         with self._db() as db:
             db.execute("DELETE FROM audit WHERE created_at<?", (summary_cutoff.isoformat(),))
+        suites_changed = self.maintain_suites(now)
         # Secure-delete is enabled on every connection; compact freed cells after a batch.
-        if counts["raw_purged"] or counts["runs_deleted"]:
+        if counts["raw_purged"] or counts["runs_deleted"] or suites_changed:
             with self._db() as db:
                 db.execute("VACUUM")
         return counts
@@ -305,6 +313,9 @@ class EvidenceLifecycle:
                 self._erase_ledger(store, path)
             opened.clear()
             with self._db() as db:
+                db.execute("DELETE FROM suite_members WHERE suite_id IN (SELECT id FROM acceptance_suites WHERE tenant=?)", (tenant,))
+                db.execute("DELETE FROM acceptance_suites WHERE tenant=?", (tenant,))
+                db.execute("DELETE FROM suite_tombstones WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM jobs WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM tombstones WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM audit WHERE tenant=?", (tenant,))

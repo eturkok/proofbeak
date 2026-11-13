@@ -76,6 +76,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="proofbeak", description="Try before agents choose.")
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
+    from proofbeak.workflow_cli import add_commands
+    add_commands(commands)
     commands.add_parser("packs", help="list registered trial packages and versions")
     example = commands.add_parser("example", help="create an editable definition without running a trial")
     example.add_argument("--output", type=Path, required=True)
@@ -104,6 +106,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     store = None
     try:
+        if args.command in {"suite", "diff", "gate"}:
+            from proofbeak.workflow_cli import main as workflow_main
+            return workflow_main(args)
         if args.command == "packs":
             print(json.dumps(builtins().describe(), indent=2))
             return 0

@@ -1,0 +1,59 @@
+name: Proofbeak acceptance
+description: Run caller-defined suites and fail on violations, incomplete observations or unresolved cleanup.
+inputs:
+  suite:
+    description: Path to the suite.v1 JSON definition.
+    required: true
+  providers:
+    description: Optional operator-owned capability provider map.
+    required: false
+    default: ''
+  baseline:
+    description: Optional previous suite JSON report to compare in the same context.
+    required: false
+    default: ''
+  artifact-name:
+    description: Unique name for exported JSON, HTML, JUnit and Markdown reports.
+    required: false
+    default: proofbeak-acceptance
+runs:
+  using: composite
+  steps:
+    - name: Run acceptance suite
+      id: acceptance
+      continue-on-error: true
+      shell: bash
+      env:
+        PB_SUITE: ${{ inputs.suite }}
+        PB_PROVIDERS: ${{ inputs.providers }}
+        PB_BASELINE: ${{ inputs.baseline }}
+      run: |
+        mkdir -p reports/proofbeak
+        args=()
+        if [ -n "$PB_PROVIDERS" ]; then args+=(--providers "$PB_PROVIDERS"); fi
+        set +e
+        python -m proofbeak suite run "$PB_SUITE" "${args[@]}" \
+          --key "ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+          --db .proofbeak/ci.sqlite3 --output reports/proofbeak/suite.json \
+          --html reports/proofbeak/suite.html --junit reports/proofbeak/junit.xml \
+          --summary reports/proofbeak/summary.md
+        status=$?
+        if [ "$status" -eq 0 ] && [ -n "$PB_BASELINE" ]; then
+          python -m proofbeak diff "$PB_BASELINE" reports/proofbeak/suite.json --output reports/proofbeak/diff.json
+          status=$?
+        fi
+        if [ -f reports/proofbeak/summary.md ]; then cat reports/proofbeak/summary.md >> "$GITHUB_STEP_SUMMARY"; fi
+        exit "$status"
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: reports/proofbeak/
+        if-no-files-found: error
+        retention-days: 7
+    - name: Enforce acceptance gate
+      if: steps.acceptance.outcome != 'success'
+      shell: bash
+      run: |
+        echo 'Proofbeak acceptance did not pass. Inspect the exported reports.'
+        exit 1

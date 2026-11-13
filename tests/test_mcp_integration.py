@@ -75,7 +75,8 @@ class McpIntegrationTests(unittest.TestCase):
                 tools = {tool.name: tool for tool in listing.tools}
                 self.assertEqual(set(tools), {"list_trial_packs", "run_trial", "get_run",
                     "compare_results", "get_evidence", "retry_cleanup", "cancel_run", "list_runs",
-                    "find_evidence", "revoke_evidence", "list_audit_events", "validate_trial"})
+                    "find_evidence", "revoke_evidence", "list_audit_events", "validate_trial",
+                    "validate_suite", "run_suite", "get_suite", "list_suites", "cancel_suite", "compare_runs"})
                 self.assertTrue(tools["validate_trial"].annotations.readOnlyHint)
                 self.assertNotIn("tenant_id", tools["run_trial"].inputSchema["properties"])
                 self.assertTrue(all(tool.outputSchema is not None for tool in tools.values()))

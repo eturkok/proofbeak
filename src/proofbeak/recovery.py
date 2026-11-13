@@ -257,6 +257,11 @@ def restore(snapshot, state):
                     BEGIN SELECT RAISE(ABORT,'restore_key_prefix_required'); END""")
                 connection.execute("UPDATE jobs SET state='interrupted',reason='state_restored',completed_at=? "
                                    "WHERE state IN ('queued','running')", (now,))
+                if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='acceptance_suites'").fetchone():
+                    connection.execute("UPDATE acceptance_suites SET state='interrupted',reason='state_restored',completed_at=? "
+                                       "WHERE state IN ('queued','running')", (now,))
+                    connection.execute("UPDATE suite_members SET request=NULL,context=NULL WHERE suite_id IN "
+                                       "(SELECT id FROM acceptance_suites WHERE reason='state_restored')")
                 for (tenant,) in connection.execute("SELECT DISTINCT tenant FROM jobs"):
                     connection.execute("INSERT INTO audit (tenant,run_id,event,detail,created_at) VALUES (?,NULL,?,?,?)",
                         (tenant, "state_restored", canonical({"idempotency_key_prefix": prefix}), now))

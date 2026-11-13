@@ -43,8 +43,8 @@ class BridgeClient:
         except (URLError, OSError):
             raise ServiceError("api_unavailable", 503) from None
         with response:
-            content = response.read(2_097_153)
-            if len(content) > 2_097_152:
+            content = response.read(16_777_217)
+            if len(content) > 16_777_216:
                 raise ServiceError("response_too_large", 502)
             try:
                 data = json.loads(content)
@@ -145,6 +145,42 @@ def create_server(client):
         """Read this tenant's metadata-only audit history; credentials and fixture payloads are excluded."""
         query = {"limit": limit, **({"before": before} if before else {})}
         return call("GET", "/audit?" + urlencode(query))
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def validate_suite(suite: dict) -> dict[str, Any]:
+        """Validate all expanded suite cases before any provider work; report bounded matrix size."""
+        return call("POST", "/suites/validate", {"suite": suite})
+
+    @server.tool(annotations=write, structured_output=True)
+    def run_suite(suite: dict, idempotency_key: str) -> dict[str, Any]:
+        """Queue a tenant-owned suite of scenarios and bounded value matrices; reuse keys for retries."""
+        return call("POST", "/suites", {"suite": suite}, key=idempotency_key)
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def get_suite(suite_id: str) -> dict[str, Any]:
+        """Read suite progress, per-condition evidence references and the conservative acceptance gate."""
+        path = client.run_path(suite_id).replace("/runs/", "/suites/", 1)
+        return call("GET", path)
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def list_suites(limit: int = 25, before: str | None = None) -> dict[str, Any]:
+        """List this tenant's acceptance suites, with an older-page cursor."""
+        return call("GET", "/suites?" + urlencode({"limit": limit, **({"before": before} if before else {})}))
+
+    @server.tool(annotations=write, structured_output=True)
+    def cancel_suite(suite_id: str) -> dict[str, Any]:
+        """Cancel the active suite member and prevent execution of all remaining planned cases."""
+        path = client.run_path(suite_id).replace("/runs/", "/suites/", 1)
+        return call("POST", path + "/cancel")
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def compare_runs(baseline: str, current: str, kind: str = "trial",
+                     allow_provider_version_change: bool = False) -> dict[str, Any]:
+        """Compare tenant-owned trial or suite reports; incompatible contexts remain inconclusive."""
+        client.run_path(baseline)
+        client.run_path(current)
+        return call("POST", "/comparisons", {"baseline": baseline, "current": current, "kind": kind,
+                    "allow_provider_version_change": allow_provider_version_change})
 
     return server
 

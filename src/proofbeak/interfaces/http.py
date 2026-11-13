@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Header, Query
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,6 +21,19 @@ class RunRequest(BaseModel):
 
 class LookupRequest(RunRequest):
     fresh: bool = False
+
+
+class SuiteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    suite: dict
+
+
+class ComparisonRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    baseline: str
+    current: str
+    kind: str = "trial"
+    allow_provider_version_change: bool = False
 
 
 class BodyLimit:
@@ -83,6 +96,51 @@ def create_app(service: TrialService, background=True):
     @app.get("/packs")
     def packs(owner: str = Depends(tenant)):
         return service.packs(owner)
+
+    @app.post("/suites/validate")
+    def validate_suite(body: SuiteRequest, owner: str = Depends(tenant)):
+        return service.validate_suite(owner, body.suite)
+
+    @app.post("/suites", status_code=202)
+    def submit_suite(body: SuiteRequest, owner: str = Depends(tenant),
+                     key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128)):
+        result = service.submit_suite(owner, body.suite, key)
+        return JSONResponse(result, status_code=202, headers={"Location": f'/suites/{result["suite_id"]}'})
+
+    @app.get("/suites")
+    def suites(owner: str = Depends(tenant), limit: int = Query(default=25, ge=1, le=100), before: str | None = None):
+        return service.list_suites(owner, limit, before)
+
+    @app.get("/suites/{suite_id}")
+    def get_suite(suite_id: str, owner: str = Depends(tenant)):
+        return service.get_suite(owner, suite_id)
+
+    @app.post("/suites/{suite_id}/cancel")
+    def cancel_suite(suite_id: str, owner: str = Depends(tenant)):
+        return service.cancel_suite(owner, suite_id)
+
+    @app.get("/suites/{suite_id}/export")
+    def export_suite(suite_id: str, format: str = "json", owner: str = Depends(tenant)):
+        from proofbeak import ci
+        from proofbeak.models import canonical
+        report = service.get_suite(owner, suite_id)
+        formats = {"json": (canonical, "application/json", "json"),
+                   "html": (ci.render_suite_html, "text/html", "html"),
+                   "junit": (ci.junit, "application/xml", "xml"), "summary": (ci.markdown, "text/markdown", "md")}
+        if format not in formats:
+            raise ServiceError("invalid_export_format", 422)
+        render, media_type, suffix = formats[format]
+        return Response(render(report), media_type=media_type, headers={
+            "Content-Disposition": f'attachment; filename="proofbeak-{suite_id}.{suffix}"',
+            "Cache-Control": "no-store"})
+
+    @app.post("/comparisons")
+    def compare(body: ComparisonRequest, owner: str = Depends(tenant)):
+        from proofbeak.regression import compare_reports
+        if body.kind not in {"trial", "suite"}:
+            raise ServiceError("invalid_comparison_kind", 422)
+        read = service.get_suite if body.kind == "suite" else service.comparison
+        return compare_reports(read(owner, body.baseline), read(owner, body.current), body.allow_provider_version_change)
 
     @app.post("/runs", status_code=202)
     def submit(body: RunRequest, owner: str = Depends(tenant),
