@@ -2,7 +2,7 @@
 
 **Check whether a service meets your requirements. Decide with evidence.**
 
-[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md) · [PyPI](https://pypi.org/project/proofbeak/)
+[PyPI](https://pypi.org/project/proofbeak/)
 
 Proofbeak is a self-hosted acceptance-testing and evidence service for developers and AI
 agents. Define the behavior your application needs, choose candidate services, and run the

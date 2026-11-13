@@ -1,4 +1,4 @@
-include LICENSE README.md README.tr.md CHANGELOG.md CONTRIBUTING.md
+include LICENSE README.md CHANGELOG.md CONTRIBUTING.md
 include Dockerfile .dockerignore requirements-runtime.lock requirements-build.in
 include compose*.yaml
 recursive-include deploy Dockerfile.* *.conf *.py *.yaml
