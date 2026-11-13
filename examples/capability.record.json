@@ -1,0 +1,72 @@
+{
+  "id": "scenario.v2",
+  "name": "A committed row is independently observable",
+  "fixture": {
+    "key": "probe",
+    "value": "hello"
+  },
+  "setup": [],
+  "steps": [
+    {
+      "id": "write",
+      "op": "record.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "value": {
+          "ref": [
+            "fixture",
+            "value"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "row",
+      "op": "record.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    }
+  ],
+  "require": [
+    {
+      "name": "absent",
+      "actual": [
+        "before",
+        "row",
+        "exists"
+      ],
+      "op": "eq",
+      "value": false
+    }
+  ],
+  "expect": [
+    {
+      "name": "committed",
+      "actual": [
+        "after",
+        "row",
+        "value"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "fixture",
+          "value"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "scenario.v2",
+  "name": "An event produces an independently observed result",
+  "fixture": {},
+  "setup": [],
+  "steps": [
+    {
+      "id": "send",
+      "op": "stream.publish",
+      "args": {
+        "channel": "events",
+        "payload": {
+          "message": "hello"
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "received",
+      "op": "stream.read",
+      "args": {
+        "channel": "results"
+      }
+    }
+  ],
+  "require": [],
+  "expect": [
+    {
+      "name": "processed",
+      "actual": [
+        "after",
+        "received",
+        "count"
+      ],
+      "op": "gte",
+      "value": 1
+    }
+  ],
+  "eventually": {
+    "timeout_seconds": 5,
+    "interval_seconds": 0.1,
+    "stable_samples": 2
+  }
+}

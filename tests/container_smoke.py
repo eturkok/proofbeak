@@ -52,10 +52,25 @@ assert evidence["evidence"]["before"] is not None
 assert evidence["evidence"]["after"] is not None
 assert evidence["cleanup_status"] == "cleaned"
 assert evidence["validity"]["reusable"]
+v2_result = None
+if "capability:sqlite" in catalog["providers"]:
+    v2 = next(p["example_test"] for p in catalog["packages"] if p["id"] == "scenario.v2")
+    submitted = client.request("POST", "/runs", {"test":v2,"candidates":["capability:sqlite"]}, key="offline-capabilities")
+    limit = time.monotonic() + 15
+    while True:
+        status = client.request("GET", "/runs/"+submitted["run_id"])
+        if status["state"] in {"completed","interrupted","cancelled"}:break
+        assert time.monotonic() < limit
+        time.sleep(.05)
+    assert status["state"] == "completed", status
+    v2_comparison = client.request("GET", "/runs/"+submitted["run_id"]+"/comparison")
+    v2_result = v2_comparison["candidates"][0]
+    assert v2_result["verdict"] == "pass" and v2_result["cleanup_status"] == "cleaned"
 assert os.geteuid() != 0
 print(json.dumps({"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned",
                   "run_id":run_id,"evidence_hash":evidence["evidence_hash"],"observed_at":evidence["observed_at"],
-                  "worker_backend":comparison["runner"]["backend"]}))
+                  "worker_backend":comparison["runner"]["backend"],
+                  "capability_sqlite": v2_result["verdict"] if v2_result else "not_configured"}))
 '''
 
 
@@ -64,7 +79,7 @@ def smoke(image, uid):
         token = secrets.token_urlsafe(32)
         config = {"state_dir": "/var/lib/proofbeak/state", "tenants": [{
             "id": "smoke", "token_sha256": hashlib.sha256(token.encode()).hexdigest(),
-            "providers": {"filesystem": {}}}]}
+            "providers": {"filesystem": {}, "capability:sqlite": {"kind":"sqlite","connection":{}}}}]}
         path = Path(directory) / "config.json"
         path.write_text(json.dumps(config))
         # Synthetic digest-only fixture, readable by arbitrary container UID; no real token in this file.

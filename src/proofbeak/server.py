@@ -23,6 +23,9 @@ from proofbeak.service import Tenant, TrialService
 
 
 def provider_factory(name, settings, root, tenant_id):
+    if name.startswith("capability:"):
+        from proofbeak.connectors import configured_connector
+        return configured_connector(name, settings, root, tenant_id)
     if name.startswith("scenario:"):
         inner = name[len("scenario:"):]
         if inner.startswith("http:"):

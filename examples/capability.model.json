@@ -1,0 +1,44 @@
+{
+  "id": "scenario.v2",
+  "name": "Model response follows an explicit output contract",
+  "fixture": {},
+  "setup": [],
+  "steps": [],
+  "observe": [
+    {
+      "id": "response",
+      "op": "model.generate",
+      "args": {
+        "prompt": "Explain vectors in one sentence."
+      }
+    }
+  ],
+  "require": [],
+  "expect": [
+    {
+      "name": "answer_shape",
+      "actual": [
+        "after",
+        "response",
+        "answer"
+      ],
+      "op": "schema",
+      "value": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      }
+    },
+    {
+      "name": "response_time",
+      "actual": [
+        "after",
+        "response",
+        "_proofbeak",
+        "elapsed_ms"
+      ],
+      "op": "lte",
+      "value": 5000
+    }
+  ]
+}

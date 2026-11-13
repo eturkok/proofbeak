@@ -43,5 +43,6 @@ def builtins() -> PackRegistry:
     from proofbeak.packs.calendar import CalendarPack
     from proofbeak.packs.storage import StoragePack
     from proofbeak.packs.scenario import ScenarioPack
+    from proofbeak.packs.scenario_v2 import CapabilityPack
 
-    return PackRegistry([CalendarPack(), StoragePack(), ScenarioPack()])
+    return PackRegistry([CalendarPack(), StoragePack(), ScenarioPack(), CapabilityPack()])

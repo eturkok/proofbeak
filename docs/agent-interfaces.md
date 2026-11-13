@@ -101,6 +101,9 @@ mechanism. The token binds this bridge process to one tenant. It is not a tool a
 
 The twelve tools are `list_trial_packs`, `validate_trial`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
 `retry_cleanup`, `cancel_run`, `list_runs`, `find_evidence`, `revoke_evidence`, and `list_audit_events`.
+These also expose [`scenario.v2` capability scenarios](capabilities.md), including candidate
+operation schemas. Proofbeak can act as an MCP client of another target server through the
+new connector; that is distinct from the stdio control bridge described here.
 Typed tools publish output schemas and return structured JSON.
 Discovery supplies example trials so the agent can form a valid request without another
 documentation lookup. Discovery and reads are
