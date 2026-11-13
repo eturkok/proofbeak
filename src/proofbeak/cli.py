@@ -23,10 +23,17 @@ from proofbeak.validation import (TrialValidationError, candidate_issues, issue_
                                   issue_location, validation_result)
 
 
-def adapters_for(names):
+def adapters_for(names, profiles=None):
     result = []
     for name in names:
-        if name.startswith("scenario:"):
+        if name.startswith("capability:"):
+            from proofbeak.connectors import configured_connector
+            from proofbeak.server import read_json_file
+            definitions = read_json_file(profiles or os.environ.get("PROOFBEAK_PROVIDERS_FILE", "providers.json"))
+            if name not in definitions:
+                raise ValueError("candidate is missing from the operator provider file")
+            result.append(configured_connector(name, definitions[name], Path(".proofbeak"), "cli")())
+        elif name.startswith("scenario:"):
             inner = name[len("scenario:"):]
             if inner.startswith("http:"):
                 alias = inner.split(":", 1)[1].upper().replace("-", "_")
@@ -73,6 +80,10 @@ def main(argv=None):
     example = commands.add_parser("example", help="create an editable definition without running a trial")
     example.add_argument("--output", type=Path, required=True)
     example.add_argument("--trial", default="scenario.v1", help="registered format to use as a starting point")
+    imported = commands.add_parser("import-openapi", help="import explicitly selected OpenAPI JSON operation bindings")
+    imported.add_argument("spec", type=Path)
+    imported.add_argument("--operation", action="append", required=True)
+    imported.add_argument("--output", type=Path, required=True)
     commands.add_parser("google-preflight", help="read-only Google test-account identity check")
     validate = commands.add_parser("validate", help="validate a closed trial definition")
     validate.add_argument("spec", type=Path)
@@ -86,6 +97,8 @@ def main(argv=None):
     run.add_argument("--html", type=Path)
     cleanup = commands.add_parser("cleanup", help="retry pending cleanup without replaying trials")
     cleanup.add_argument("--candidate", action="append", required=True)
+    for subcommand in (validate, run, cleanup):
+        subcommand.add_argument("--providers", type=Path, help="operator-owned capability provider map")
     for subcommand in (run, cleanup):
         subcommand.add_argument("--db", type=Path, default=Path(".proofbeak/runs.sqlite3"))
     args = parser.parse_args(argv)
@@ -104,6 +117,14 @@ def main(argv=None):
             write_private(args.output, json.dumps(spec, indent=2) + "\n", overwrite=False)
             print(f"Created: {args.output}")
             return 0
+        if args.command == "import-openapi":
+            from proofbeak.connectors.rest import openapi_operations
+            if args.spec.stat().st_size > 1048576:
+                raise ValueError("OpenAPI input exceeds 1 MiB")
+            operations = openapi_operations(json.loads(args.spec.read_text()), args.operation)
+            write_private(args.output, json.dumps(operations, indent=2) + "\n", overwrite=False)
+            print(f"Created: {args.output}; review scope, lifecycle and credentials in the provider profile")
+            return 0
         if args.command == "google-preflight":
             from proofbeak.adapters.base import ProviderError
 
@@ -114,7 +135,7 @@ def main(argv=None):
                 print(f"Inconclusive: {exc.reason}", file=sys.stderr)
                 return 2
         if args.command == "cleanup":
-            adapters = adapters_for(args.candidate)
+            adapters = adapters_for(args.candidate, args.providers)
             store = Store(args.db)
             outcomes = recover_cleanup(store, adapters)
             print(json.dumps(outcomes, indent=2))
@@ -126,7 +147,7 @@ def main(argv=None):
         if args.command == "validate":
             if args.candidate and (len(args.candidate) > 4 or len(set(args.candidate)) != len(args.candidate)):
                 raise TrialValidationError("choose one to four distinct candidates", code="invalid_candidates")
-            issues = candidate_issues(pack, trial, adapters_for(args.candidate)) if args.candidate else []
+            issues = candidate_issues(pack, trial, adapters_for(args.candidate, args.providers)) if args.candidate else []
             if args.json:
                 print(json.dumps(validation_result(issues, pack_id=pack.id, pack_version=pack.version,
                                                    test_hash=fingerprint(spec), candidates=args.candidate or [])))
@@ -143,7 +164,7 @@ def main(argv=None):
         protected.update(Path(str(args.db) + suffix).resolve() for suffix in ("-journal", "-wal", "-shm"))
         if any(path.resolve() in protected for path in (args.output, args.html) if path is not None):
             raise ValueError("report output must not replace trial or state files")
-        adapters = adapters_for(args.candidate)
+        adapters = adapters_for(args.candidate, args.providers)
         store = Store(args.db)
         report = run_trial(spec, adapters, store, args.key)
         write_private(args.output, json.dumps(report, indent=2) + "\n")

@@ -7,9 +7,19 @@ from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.adapters.scenario import JSONReadConnector, ScenarioAdapter
+from proofbeak.adapters.capability import CapabilityAdapter
+from proofbeak.connectors import build_connector
 
 
 def encode_adapter(adapter):
+    if type(adapter) is CapabilityAdapter:
+        backend = adapter.backend
+        # Only constructors from the explicit protocol registry may cross the worker boundary.
+        expected = build_connector(backend.name, backend.settings, backend.secrets)
+        if type(expected) is not type(backend) or backend.evidence_level != "local_runner":
+            raise ValueError("unregistered capability worker connector")
+        return {"type": "capability", "options": {"name": backend.name, "settings": backend.settings,
+                                                     "secrets": backend.secrets}}
     if type(adapter) is ScenarioAdapter:
         return {"type": "scenario", "options": {"backend": encode_adapter(adapter.backend)}}
     if type(adapter) is JSONReadConnector and type(adapter.transport) is Transport \
@@ -38,6 +48,10 @@ def encode_adapter(adapter):
 def decode_adapter(value):
     if not isinstance(value, dict) or set(value) != {"type", "options"}:
         raise ValueError("invalid worker adapter")
+    if value["type"] == "capability":
+        if not isinstance(value["options"], dict) or set(value["options"]) != {"name", "settings", "secrets"}:
+            raise ValueError("invalid capability worker connector")
+        return CapabilityAdapter(build_connector(**value["options"]))
     if value["type"] == "scenario":
         if not isinstance(value["options"], dict) or set(value["options"]) != {"backend"}:
             raise ValueError("invalid scenario worker connector")
