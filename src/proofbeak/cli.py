@@ -78,6 +78,8 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     from proofbeak.workflow_cli import add_commands
     add_commands(commands)
+    from proofbeak.bundle_cli import add_commands as add_bundle_commands
+    add_bundle_commands(commands)
     commands.add_parser("packs", help="list registered trial packages and versions")
     example = commands.add_parser("example", help="create an editable definition without running a trial")
     example.add_argument("--output", type=Path, required=True)
@@ -106,7 +108,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     store = None
     try:
-        if args.command in {"suite", "diff", "gate"}:
+        if args.command in {"keys", "bundle"}:
+            from proofbeak.bundle_cli import main as bundle_main
+            return bundle_main(args)
+        if args.command in {"suite", "diff", "gate", "connector"}:
             from proofbeak.workflow_cli import main as workflow_main
             return workflow_main(args)
         if args.command == "packs":
