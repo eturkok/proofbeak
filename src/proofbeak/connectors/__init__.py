@@ -91,6 +91,12 @@ def build_connector(name, settings, secrets=None):
                     "sqlite": SQLConnector, "postgres": SQLConnector, "redis": RedisConnector, "mcp": MCPConnector}
     if not isinstance(settings, dict) or settings.get("kind") not in constructors:
         raise ValueError("unknown capability connector kind")
+    if not isinstance(settings.get("connection"), dict):
+        raise ValueError("connector connection must be an operator-owned object")
+    if settings["kind"] not in {"sqlite", "postgres", "redis"} and not isinstance(settings.get("operations"), dict):
+        raise ValueError("configure named operations for this connector")
+    if settings["kind"] in {"rest", "search", "model"} and not isinstance(settings["connection"].get("endpoint"), str):
+        raise ValueError("configure an HTTP origin for this connector")
     return constructors[settings["kind"]](name, settings, secrets)
 
 

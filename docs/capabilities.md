@@ -10,6 +10,12 @@ code; adding another endpoint or tool on a supported protocol usually needs a pr
 schemas and behavior. The existing twelve MCP tools expose the new format through discovery,
 validation, execution, evidence and history; clients do not need a second control API.
 
+Connector developers implement `resource`, `provision`, `invoke` and `cleanup`, expose an
+`OperationCatalog`, and register the trusted constructor in `build_connector`. The same
+constructor must be installed in the coordinator and worker. `CapabilityAdapter` supplies
+execution, validation, observations and polling, so the worker needs no per-case branches.
+Registration is deployment code, never an import path or executable supplied by a scenario.
+
 ## Supported connectors
 
 | Kind | Configured operations | Isolation and observations |

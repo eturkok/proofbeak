@@ -199,6 +199,25 @@ class CapabilityTests(unittest.TestCase):
             self.adapter.validate_scenario(CapabilityPack().parse(self.spec))
         self.assertFalse(self.backend.root.exists())
 
+    def test_late_success_cannot_satisfy_eventual_deadline(self):
+        import time
+        original = self.backend.invoke
+        def delayed(resource, operation, arguments):
+            if operation == 'record.get':
+                time.sleep(.08)
+            return original(resource, operation, arguments)
+        self.spec['eventually'] = {'timeout_seconds': .05, 'interval_seconds': .01}
+        with patch.object(self.backend, 'invoke', side_effect=delayed):
+            row = self.run_case()
+        self.assertEqual(row['verdict'], 'inconclusive')
+        self.assertEqual(row['reason_code'], 'observation_deadline_exceeded')
+
+    def test_incomplete_profiles_return_configuration_errors_without_io(self):
+        for profile in ({'kind': 'rest'}, {'kind': 'mcp', 'connection': {}},
+                        {'kind': 'rest', 'connection': {}, 'operations': {}}):
+            with self.subTest(profile=profile), self.assertRaises(ValueError):
+                build_connector('capability:invalid', profile)
+
 
 if __name__ == '__main__':
     unittest.main()
