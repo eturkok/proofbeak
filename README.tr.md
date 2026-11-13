@@ -2,7 +2,7 @@
 
 **Bir servisin ihtiyacınızı karşıladığını test edin. Kanıta dayanarak karar verin.**
 
-[English](README.md) · [Türkçe](README.tr.md)
+[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md)
 
 Proofbeak, geliştiriciler ve yapay zekâ ajanları için kendi altyapınızda çalışan bir kabul
 testi ve kanıt servisidir. Uygulamanızın ihtiyaç duyduğu davranışı tanımlar, aday servisleri
@@ -36,9 +36,10 @@ Repo kökünden, Linux/macOS üzerinde Python 3.11+ kullanın. Bu yerel örnek e
 harici hesap veya model servisi gerektirmez:
 
 ```bash
-PYTHONPATH=src python3 -m proofbeak validate examples/scenario.delete_and_preserve.json \
+PYTHONPATH=src python3 -m proofbeak example --output scenario.json
+PYTHONPATH=src python3 -m proofbeak validate scenario.json \
   --candidate scenario:filesystem
-PYTHONPATH=src python3 -m proofbeak run examples/scenario.delete_and_preserve.json \
+PYTHONPATH=src python3 -m proofbeak run scenario.json \
   --candidate scenario:filesystem --key first-trial \
   --output reports/first-trial.json --html reports/first-trial.html
 ```
@@ -48,7 +49,7 @@ JSON dosyasını kopyalayıp kendi koşulunuza göre düzenleyin; değişen tan�
 kullanın. Aynı istek ve anahtarla tekrar çağrı, özgün çalıştırmayı getirir.
 
 Kendi tanımınızı yazıp birden fazla yapılandırılmış servise uygulamak için
-[senaryo rehberini](docs/scenarios.md) izleyin.
+[senaryo rehberini](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md) izleyin.
 
 ## Arayüzler ve kapsam
 
@@ -66,11 +67,12 @@ dağıtım rehberine bakın.
 
 ## Belgeler
 
-- [Senaryo yazımı ve örnekler](docs/scenarios.md)
-- [REST ve MCP entegrasyonu](docs/agent-interfaces.md)
-- [Bağlantılar ve genişletme sözleşmesi](docs/trial-packs.md)
-- [Kanıt geçmişi ve yeniden kullanım](docs/evidence-lifecycle.md)
-- [Dağıtım](docs/deployment.md) · [Yedekleme ve kurtarma](docs/state-recovery.md)
-- [Gerçekleştirilen testler](docs/acceptance-results.tr.md) · [Sürüm notları](CHANGELOG.md)
+- [Kurulum ve paket dosyaları](https://github.com/eturkok/proofbeak/blob/main/docs/installation.md)
+- [Senaryo yazımı ve örnekler](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md)
+- [REST ve MCP entegrasyonu](https://github.com/eturkok/proofbeak/blob/main/docs/agent-interfaces.md)
+- [Bağlantılar ve genişletme sözleşmesi](https://github.com/eturkok/proofbeak/blob/main/docs/trial-packs.md)
+- [Kanıt geçmişi ve yeniden kullanım](https://github.com/eturkok/proofbeak/blob/main/docs/evidence-lifecycle.md)
+- [Dağıtım](https://github.com/eturkok/proofbeak/blob/main/docs/deployment.md) · [Yedekleme ve kurtarma](https://github.com/eturkok/proofbeak/blob/main/docs/state-recovery.md)
+- [Gerçekleştirilen testler](https://github.com/eturkok/proofbeak/blob/main/docs/acceptance-results.tr.md) · [Sürüm notları](https://github.com/eturkok/proofbeak/blob/main/CHANGELOG.md)
 
-[Katkıda bulunma](CONTRIBUTING.md) · [Mimari](docs/architecture.md) · [Yol haritası](docs/roadmap.md) · [Apache-2.0](LICENSE)
+[Katkıda bulunma](https://github.com/eturkok/proofbeak/blob/main/CONTRIBUTING.md) · [Mimari](https://github.com/eturkok/proofbeak/blob/main/docs/architecture.md) · [Yol haritası](https://github.com/eturkok/proofbeak/blob/main/docs/roadmap.md) · [Apache-2.0](https://github.com/eturkok/proofbeak/blob/main/LICENSE)

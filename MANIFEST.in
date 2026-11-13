@@ -1,0 +1,18 @@
+include LICENSE README.md README.tr.md CHANGELOG.md CONTRIBUTING.md
+include Dockerfile .dockerignore requirements-runtime.lock requirements-build.in
+include compose*.yaml
+recursive-include deploy Dockerfile.* *.conf *.py *.yaml
+recursive-include src *.py
+recursive-include examples *.json *.py
+recursive-include docs *.md *.json
+recursive-include tests *.py *.yaml
+recursive-include charts *.yaml *.tpl
+prune .git
+prune .proofbeak
+prune .venv
+prune reports
+prune dist
+prune build
+global-exclude __pycache__ *.py[cod] .DS_Store .env .env.* *.sqlite3 *.db *.pem *.key
+prune release
+prune release-image

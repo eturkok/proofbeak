@@ -10,3 +10,8 @@ reports
 dist
 build
 .DS_Store
+release/**
+!release/
+!release/dist/
+!release/dist/*.whl
+release-image

@@ -70,6 +70,9 @@ def main(argv=None):
     parser.add_argument("--version", action="version", version=__version__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("packs", help="list registered trial packages and versions")
+    example = commands.add_parser("example", help="create an editable definition without running a trial")
+    example.add_argument("--output", type=Path, required=True)
+    example.add_argument("--trial", default="scenario.v1", help="registered format to use as a starting point")
     commands.add_parser("google-preflight", help="read-only Google test-account identity check")
     validate = commands.add_parser("validate", help="validate a closed trial definition")
     validate.add_argument("spec", type=Path)
@@ -90,6 +93,16 @@ def main(argv=None):
     try:
         if args.command == "packs":
             print(json.dumps(builtins().describe(), indent=2))
+            return 0
+        if args.command == "example":
+            registry = builtins()
+            pack = registry.packs.get(args.trial)
+            if pack is None:
+                raise ValueError("choose a registered trial format")
+            spec = pack.example()
+            registry.prepare(spec)
+            write_private(args.output, json.dumps(spec, indent=2) + "\n", overwrite=False)
+            print(f"Created: {args.output}")
             return 0
         if args.command == "google-preflight":
             from proofbeak.adapters.base import ProviderError

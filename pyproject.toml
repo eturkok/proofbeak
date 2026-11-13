@@ -4,13 +4,31 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proofbeak"
-version = "0.5.1"
+version = "0.6.0"
 description = "Consumer-defined acceptance trials for AI agents"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{name = "Esref Turkok"}]
+keywords = ["agents", "acceptance-testing", "evidence", "mcp"]
+classifiers = [
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/eturkok/proofbeak"
+Documentation = "https://github.com/eturkok/proofbeak/blob/main/docs/installation.md"
+Repository = "https://github.com/eturkok/proofbeak"
+Issues = "https://github.com/eturkok/proofbeak/issues"
+Changelog = "https://github.com/eturkok/proofbeak/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 calendar = ["icalendar>=6.1,<8"]
