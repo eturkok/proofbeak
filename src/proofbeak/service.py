@@ -19,6 +19,7 @@ from uuid import uuid4
 from proofbeak.executor import SubprocessExecutor
 from proofbeak.models import canonical, fingerprint
 from proofbeak.lifecycle import EvidenceLifecycle
+from proofbeak.suite_service import SuiteService
 from proofbeak.observer import OBSERVER_VERSION
 from proofbeak.packs import builtins
 from proofbeak.recovery import file_lock
@@ -38,7 +39,7 @@ class Tenant:
     providers: dict
 
 
-class TrialService(EvidenceLifecycle):
+class TrialService(EvidenceLifecycle, SuiteService):
     def __init__(self, root, tenants, pending_limit=8, executor=None):
         self.root = Path(root).resolve()
         if (self.root / ".restore-incomplete").exists():
@@ -78,6 +79,7 @@ class TrialService(EvidenceLifecycle):
                         state TEXT NOT NULL, result TEXT, reason TEXT, recovery TEXT,
                         created_at TEXT NOT NULL, UNIQUE(tenant, client_key))""")
                 self._init_lifecycle()
+                self._init_suites()
         except ValueError as error:
             if str(error) == "offline_state_required":
                 raise RuntimeError("another service worker owns this state directory") from None
@@ -219,8 +221,7 @@ class TrialService(EvidenceLifecycle):
             prefix = self.key_prefix(db)
             if prefix and not key.startswith(prefix):
                 raise ServiceError("restore_key_prefix_required", 409)
-            count = db.execute("SELECT COUNT(*) FROM jobs WHERE tenant=? "
-                               "AND state IN ('queued','running')", (tenant,)).fetchone()[0]
+            count = self._pending_slots(db, tenant)
             if count >= self.pending_limit:
                 raise ServiceError("tenant_queue_full", 429)
             run_id = uuid4().hex
@@ -366,6 +367,7 @@ class TrialService(EvidenceLifecycle):
             raise RuntimeError("start the worker before claiming jobs")
         with self._db() as db:
             db.execute("BEGIN IMMEDIATE")
+            self._schedule_suites(db)
             row = db.execute("SELECT * FROM jobs WHERE state='queued' ORDER BY created_at, id LIMIT 1").fetchone()
             if row is None:
                 return False
