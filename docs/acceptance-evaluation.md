@@ -65,7 +65,9 @@ MCP, waits for the actual worker and verifies raw-evidence hashes before JSON/HT
 No provider credentials are given to the MCP client; its tenant token stays out of reports.
 
 It then retrieves the first run with the same key, restarts the API and retrieves it again.
-Both results must equal the original report, including observation times and evidence.
+Both stored results must equal the original, including observation times and evidence.
+Only the current validity assessment's `checked_at` changes when evidence is read again;
+the comparison excludes that field and checks every other report field unchanged.
 Independent WebDAV HTTP journals must show only the expected scoped mutation requests, with
 zero additional requests for those retrievals. HTTP catalogs accept only GET and record
 actual read paths. Deleting a missing key can return 404; that is an observed idempotent

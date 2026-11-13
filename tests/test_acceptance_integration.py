@@ -121,6 +121,16 @@ class AcceptanceIntegrationTests(WebDAVFixtures, unittest.TestCase):
                 self.fail("acceptance provider journals did not reach their expected count")
             time.sleep(.05)
 
+    def assert_stored_report_unchanged(self, actual, original):
+        reports = []
+        for report in (actual, original):
+            copied = json.loads(json.dumps(report))
+            for row in copied["candidates"]:
+                # A read re-evaluates current validity; it does not change trial observations.
+                self.assertIsInstance(row["validity"].pop("checked_at"), str)
+            reports.append(copied)
+        self.assertEqual(*reports)
+
     def test_twelve_selection_questions_from_fresh_configuration(self):
         manifest, cases = load_cases()
         output = Path(os.environ.get(self.fixture_report_environment, self.root / "reports"))
@@ -199,11 +209,11 @@ class AcceptanceIntegrationTests(WebDAVFixtures, unittest.TestCase):
         self.assertTrue(all(not server.mutations for server in self.catalogs))
         self.assertEqual(len(self.client.request("GET", "/runs")["runs"]), 12)
         retry = self.run_client(cases[0], output / "same-key-retrieval.json", "acceptance-" + cases[0]["id"])
-        self.assertEqual(retry, original)
+        self.assert_stored_report_unchanged(retry, original)
         self.stop_api()
         self.start_api()
         restarted = self.run_client(cases[0], output / "after-restart-retrieval.json", "acceptance-" + cases[0]["id"])
-        self.assertEqual(restarted, original)
+        self.assert_stored_report_unchanged(restarted, original)
         self.assertEqual(self.mutations(), previous)
         self.assertEqual([server.reads for server in self.catalogs], expected_paths)
         counts = dict(Counter(verdict for row in records for verdict in row["observed"].values()))
@@ -214,8 +224,8 @@ class AcceptanceIntegrationTests(WebDAVFixtures, unittest.TestCase):
             "candidate_observations": 24, "verdict_counts": counts, "all_cleanup_completed": True,
             "provider_mutation_requests": {name: len(rows) for name, rows in previous.items()},
             "http_reads": {name: len(server.reads) for name, server in zip(HTTP_CANDIDATES, self.catalogs)},
-            "checks": {"fresh_cli_configuration": True, "offline_config_check": True, "same_key_unchanged": True,
-                       "restart_unchanged": True, "retry_or_restart_mutations": 0, "evidence_hashes_verified": True},
+            "checks": {"fresh_cli_configuration": True, "offline_config_check": True, "same_key_stored_result_unchanged": True,
+                       "restart_stored_result_unchanged": True, "retry_or_restart_mutations": 0, "evidence_hashes_verified": True},
             "limits": ["Author-prepared synthetic needs and HTTP fixtures, not independent human pilot data.",
                        "No external model calls, A/B agent scoring, human onboarding or return-usage measurements.",
                        "Eligibility applies to each definition only; combine conditions when all are required."],
