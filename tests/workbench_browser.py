@@ -155,7 +155,14 @@ def main():
                 for name in ('Run history','Compare releases','Verify evidence','Overview'):
                     page.get_by_role('button',name='Toggle navigation',exact=True).click()
                     page.get_by_role('button',name=name,exact=True).click()
-                    assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth'),name
+                    geometry=page.evaluate('''() => ({width:innerWidth,scroll:document.documentElement.scrollWidth,
+                        overflowing:[...document.querySelectorAll('body *')].map(e=>({tag:e.tagName,cls:e.className,
+                            right:e.getBoundingClientRect().right,width:e.getBoundingClientRect().width}))
+                            .filter(e=>e.right>innerWidth+1).slice(0,25)})''')
+                    if geometry['scroll'] > geometry['width']:
+                        (reports/'mobile-layout.json').write_text(json.dumps({'page':name,**geometry},indent=2))
+                        page.screenshot(path=str(reports/'failure.png'),full_page=True)
+                    assert geometry['scroll'] <= geometry['width'],name
                 page.screenshot(path=str(reports/'overview-mobile.png'),full_page=True)
                 page.get_by_role('button',name='Toggle navigation',exact=True).click()
                 page.get_by_role('button',name='Test builder',exact=True).click()

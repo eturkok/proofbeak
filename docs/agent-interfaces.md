@@ -99,8 +99,12 @@ Configure the MCP host to run `proofbeak-mcp` with `PROOFBEAK_API_URL` (default
 `http://127.0.0.1:8765`) and `PROOFBEAK_API_TOKEN` supplied through its local secret/environment
 mechanism. The token binds this bridge process to one tenant. It is not a tool argument.
 
-The twelve tools are `list_trial_packs`, `validate_trial`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
-`retry_cleanup`, `cancel_run`, `list_runs`, `find_evidence`, `revoke_evidence`, and `list_audit_events`.
+The twenty-two tools are `list_trial_packs`, `validate_trial`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
+`retry_cleanup`, `cancel_run`, `list_runs`, `find_evidence`, `revoke_evidence`, `list_audit_events`,
+`validate_suite`, `run_suite`, `get_suite`, `list_suites`, `cancel_suite`, `compare_runs`,
+`get_signing_key`, `export_evidence_bundle`, `draft_trial`, and `preview_suite`.
+See [suites and comparisons](suites.md), [guided authoring](workspace.md) and
+[signed evidence](signed-evidence.md) for the corresponding REST routes and trust contracts.
 These also expose [`scenario.v2` capability scenarios](capabilities.md), including candidate
 operation schemas. Proofbeak can act as an MCP client of another target server through the
 new connector; that is distinct from the stdio control bridge described here.

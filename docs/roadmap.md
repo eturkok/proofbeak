@@ -83,6 +83,20 @@ new connectors or a natural-language compiler. Human-pilot gates below remain op
 Model/search protocol qualification uses local reference data and deterministic model fixtures.
 External model quality, developer adoption and demand remain the independent pilot gates below.
 
+## Workspace and repeatable acceptance 0.8.0
+
+- [x] Guide caller-owned definitions through configured operation schemas and nonexecuting previews.
+- [x] Run bounded suites/matrices with durable progress, safe retries and conservative CI gates.
+- [x] Compare compatible historical results per condition; expose incompatible evidence explicitly.
+- [x] Provide a responsive authenticated self-hosted browser workspace with no external asset service.
+- [x] Install independent trusted connector packages and qualify them through real bounded workers.
+- [x] Export signed portable evidence and verify it offline with an independently trusted key.
+- [x] Package web assets and extend installed-package, browser and publication qualification.
+
+This technical expansion does not close the human-pilot and agent decision-quality gates below.
+See [workspace](workspace.md), [suites](suites.md), [connector SDK](connector-sdk.md) and
+[signed evidence](signed-evidence.md) for usage and limits.
+
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
 | Foundation | First 12 h | Closed fixture, CLI, real self-hosted observations, two real user selection questions | `feat/storage-provider-comparison` |

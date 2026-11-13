@@ -159,10 +159,28 @@ def installation(directory, agents):
         assert installed["module"] == installed["package"] == version
         assert Path(location).resolve().is_relative_to(venv.resolve())
         assert not list((work / ".proofbeak/storage").iterdir())
+        run([cli, "suite", "example", "--output", "suite.json"])
+        run([cli, "suite", "validate", "suite.json"])
+        run([cli, "suite", "run", "suite.json", "--key", "installed-suite", "--output", "suite-report.json",
+             "--html", "suite.html", "--junit", "junit.xml", "--summary", "summary.md"])
+        suite = json.loads((work / "suite-report.json").read_text())
+        assert suite["gate"] == "pass" and len(suite["entries"]) == 3
+        assert json.loads(run([cli, "gate", "suite-report.json"]))["gate"] == "pass"
+        assert json.loads(run([cli, "diff", "suite-report.json", "suite-report.json"]))["gate"] == "pass"
+        assert all((work / name).stat().st_size for name in ("suite.html", "junit.xml", "summary.md"))
         result = {"version": version, "python": sys.version.split()[0], "core": "pass", "installed_module": location,
-                  "source_checkout_imported": False, "html_export": (work / "report.html").is_file()}
+                  "source_checkout_imported": False, "html_export": (work / "report.html").is_file(), "suite_executions": 3}
         if not agents:
             return result
+        run([cli, "keys", "generate", "--private", "identity/private.json", "--public", "identity/public.json"])
+        run([cli, "bundle", "create", "suite-report.json", "--key", "identity/private.json", "--output", "suite.bundle.json"])
+        signed = json.loads(run([cli, "bundle", "verify", "suite.bundle.json", "--public-key", "identity/public.json"]))
+        assert signed["signature_valid"] and signed["content_integrity_valid"] and signed["acceptance_gate"] == "pass"
+        run([python, "-I", "-c", "from importlib.resources import files; from pathlib import Path; "
+             "from proofbeak.studio import initialize; assets=files('proofbeak').joinpath('web'); "
+             "assert all(assets.joinpath(n).is_file() for n in ('index.html','app.js','style.css','mark.svg')); "
+             "p,t=initialize(Path('studio')); assert t and p.is_file(); assert initialize(Path('studio')) == (p,t)"])
+        result.update(signed_bundle="pass", studio_setup="pass", workspace_assets="pass")
         (work / "providers.json").write_text(json.dumps({"scenario:filesystem": {}, "capability:sqlite": {"kind":"sqlite","connection":{}}}))
         initialized = run([server, "init", "--config", "server.json", "--state", "state", "--providers", "providers.json"])
         token = next(line.removeprefix("API key (shown once): ") for line in initialized.splitlines()

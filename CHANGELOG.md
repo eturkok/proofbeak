@@ -1,6 +1,33 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-11-14
+
+Make caller-defined acceptance tests usable from a self-hosted browser workspace and repeatable
+across suites, releases and CI. Existing scenario/provider contracts remain supported.
+
+- Add `proofbeak studio`: private local setup, actual SQLite/filesystem candidates, signing
+  identity and a responsive browser console. Existing servers expose the same console at `/ui/`.
+- Add schema-guided visual/JSON authoring, explicit expectations, parameter selection,
+  nonexecuting validation/previews and selected OpenAPI import. Drafts can be saved/imported.
+- Add bounded `suite.v1` parameter matrices, durable tenant-bound scheduling, cancellation,
+  retention, restart/restore handling and same-key recovery after a lost submission response.
+- Add strict-context historical comparisons with per-condition changes and explicit
+  inconclusive results for incompatible or missing evidence.
+- Add conservative CLI/CI gates, JUnit/Markdown/HTML/JSON suite exports and a reusable
+  GitHub Actions acceptance step. Missing observations or unresolved cleanup cannot pass.
+- Add independent installed connector packages, explicit entrypoint selection, scaffolding
+  and actual worker qualification with persistent cleanup ledgers.
+- Add portable Ed25519-signed evidence, independently pinned-key offline verification and
+  separate authenticity, acceptance and freshness results. Signatures do not certify providers.
+- Add HttpOnly browser sessions, same-origin/CSRF enforcement, memory-only drafts and
+  a local-owner configuration boundary. Ordinary tenants cannot change provider allowlists.
+- Extend REST/MCP with suites, comparisons, guided drafts/previews and signed exports;
+  the MCP bridge now publishes twenty-two tools.
+- Qualify actual browser workflows, mobile layout, installed wheel assets, external connector
+  entrypoints, signing/tamper rejection and the existing provider/container/Kubernetes contracts.
+
+The deployment scope remains one coordinator with SQLite state. Remote SSO, multi-DC and
+human adoption/agent decision-quality claims remain outside this release.
 
 - Add twelve author-prepared acceptance questions as ordinary scenario definitions, with an
   automated fresh-configuration MCP/REST/worker walkthrough on actual WsgiDAV/Apache and

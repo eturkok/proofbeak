@@ -1,4 +1,22 @@
-# Stable 0.4.0 scope and qualification
+# Stability scope and qualification
+
+## 0.8.0 workspace and workflow qualification
+
+The supported deployment remains one coordinator with SQLite state. Browser, suite, connector
+SDK and signing features retain the existing tenant, worker, recovery and ownership boundaries.
+The mandatory interface job runs Chromium against a live service and actual SQLite workers:
+login/reload, visual parameter matrices, mutation-free preview, evidence/signed export,
+lost-response retry without replay, baseline comparison, pinned-key verification and tamper
+rejection, local-owner service configuration, mobile navigation and invalid-draft diagnostics.
+
+Distribution checks install the built wheel outside the checkout and verify bundled web assets,
+REST/MCP and container behavior. Independent installed connector qualification exercises the
+worker boundary; cryptographic tests reject changed content and untrusted keys. Public-index
+checks compare exact wheel/source hashes before a fresh install and exercise suites, signing
+and local Studio setup. These bounded automated checks do not establish production load,
+cross-browser coverage, an accessibility audit, human adoption or agent decision-quality gains.
+
+## Original 0.4.0 stable deployment scope
 
 Version 0.4.0 targets the generic single-coordinator service on Linux/macOS,
 with direct Python, container and standard Helm deployment options. Existing closed trial,
