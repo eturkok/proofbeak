@@ -54,4 +54,7 @@ def candidate_issues(pack, trial, adapters):
 
 
 def issue_location(issue):
-    return "/" + "/".join(str(part).replace("~", "~0").replace("/", "~1") for part in issue["path"])
+    def segment(part):
+        text = str(part).replace("~", "~0").replace("/", "~1")
+        return "".join(f"\\u{ord(char):04x}" if ord(char) < 32 or ord(char) == 127 else char for char in text)
+    return "/" + "/".join(segment(part) for part in issue["path"])

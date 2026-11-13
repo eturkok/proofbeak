@@ -162,6 +162,15 @@ class AuthoringTests(unittest.TestCase):
         self.assertEqual(error.exception.issue["path"], ["observe", 0, "args", "params"])
         self.assertLess(len(json.dumps(error.exception.issue)), 400)
 
+    def test_readable_locations_do_not_execute_control_characters_from_json_keys(self):
+        self.spec["fixture"] = {"\u001b[2J": "x" * 4097}
+        definition = self.root / "control-key.json"
+        definition.write_text(json.dumps(self.spec))
+        code, _, stderr = self.cli("validate", str(definition))
+        self.assertEqual(code, 3)
+        self.assertNotIn("\u001b", stderr)
+        self.assertIn("/fixture/\\u001b[2J", stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
