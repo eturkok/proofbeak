@@ -43,7 +43,9 @@ not recorded development time. Weekly availability and external-account access s
 - [x] Implement real REST/MCP protocol integration checks and make them mandatory in CI.
 - [x] Run trials and cleanup in separate bounded processes with independent deadlines.
 - [x] Terminate orphan workers and support tenant-bound cancellation without replaying writes.
-- [ ] Add container/network isolation, remote identity, and production data controls.
+- [x] Package a non-root container and configurable Kubernetes NetworkPolicy.
+- [x] Add evidence audit, retention, revocation and tenant data deletion.
+- [ ] Add remote identity and any per-trial container boundary required by an actual pilot.
 
 ## Evidence lifecycle increment
 
@@ -73,7 +75,9 @@ Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven 
 - [x] Run the deployment checks and preserve their reports (CI run 43313710253).
 - [ ] Validate an actual OpenShift install and NetworkPolicy enforcement on the target CNI.
 - [x] Add an actual pod replacement test for persistent evidence and idempotency.
-- [ ] Run the new restart verification in CI.
+- [x] Run the restart verification in CI (run 43316814424).
+- [x] Add actual ingress/egress probes with positive controls on Calico.
+- [ ] Run the policy-enforcement probes and preserve their report.
 
 ## Pilot decision gates
 

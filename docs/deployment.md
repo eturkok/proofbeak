@@ -111,8 +111,8 @@ and UIDs 10001 and 100123. It checks independent before/after evidence and clean
 It also lints/renders the chart, rejects replicaCount=2, installs it into an ephemeral kind
 cluster with a persistent volume, runs `helm test`, and exercises the deployed REST service.
 Reports are uploaded as `deployment-smoke-evidence`. Kindnet does not establish NetworkPolicy
-enforcement; the Kubernetes report explicitly records this limit. CI uses synthetic fixtures
-and ephemeral credentials, and never calls a real Google account.
+enforcement. The new Calico traffic checks described below must pass before any enforcement
+claim. CI uses synthetic fixtures and ephemeral credentials, and never calls a real Google account.
 
 The full container and Kubernetes checks passed in [CI run 43313710253](https://github.com/eturkok/proofbeak/actions/runs/43313710253).
 
@@ -125,3 +125,25 @@ replacement without treating a retry as a fresh observation. The report distingu
 CI client's UID from the UID obtained inside the running API pod. It does not establish
 backup restore, cross-node storage failover, multi-writer safety or provider recovery during
 an interrupted mutation; those have different failure modes.
+
+## NetworkPolicy traffic checks
+
+The policy test uses an ephemeral single-node kind cluster with Calico 3.33.0, following
+[Calico's kind installation guidance](https://docs.tigera.io/calico/latest/getting-started/kubernetes/kind).
+It disables kindnet and pins the kind node image to Kubernetes 1.35.0. Calico is a CI dependency,
+not an extra service required by a deployed Proofbeak image; production clusters supply their CNI.
+
+Actual IPv4 TCP probes must demonstrate all of these conditions:
+
+- A labeled client reaches the API health endpoint; an unlabeled client cannot.
+- A control client reaches a healthy synthetic sink while the API pod's default egress is denied.
+- An explicit chart egress rule permits the API pod to reach only that selected sink/port.
+- Removing the rule restores the denial while the control client still reaches the sink.
+
+Rules are changed through helm upgrade against the actual chart, with bounded waits for policy
+propagation. Each probe opens a fresh connection. HTTP error responses count as reachable
+traffic rather than a network denial. Probe pods receive no API/provider credentials and run
+non-root with a read-only rootfs. The network-policy-smoke.json report is uploaded with the
+other deployment evidence. A passing test covers this CNI and these IPv4 TCP paths; it does
+not validate OpenShift admission, another CNI, IPv6, DNS policies, provider HTTPS allowlists,
+or network separation between tenants/workers sharing the same API pod.

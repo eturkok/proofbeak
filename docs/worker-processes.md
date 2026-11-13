@@ -40,7 +40,10 @@ are not silently promoted into real-provider workers.
 
 This is process separation and resource bounding on a trusted host. It is not a container,
 user-namespace, filesystem, syscall, or network sandbox. Container/job isolation and enforced
-egress policies remain deployment-level work; arbitrary untrusted plugin code is not allowed.
+egress policies are deployment-level boundaries. The container/Helm package now supplies a
+shared non-root, read-only runtime and configurable pod NetworkPolicy, described in
+[deployment](deployment.md); it does not create a new container or network namespace per trial.
+Arbitrary untrusted plugin code is not allowed.
 
 ## Timeout, crash, cancellation, and recovery
 

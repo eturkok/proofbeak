@@ -83,7 +83,7 @@ if __name__ == "__main__":
                        "helm_install": "passed", "persistent_volume": True,
                        "pod_replaced": True, "evidence_survived_restart": True,
                        "idempotency_survived_restart": True,
-                       "network_policy_enforcement": "not tested with kindnet"})
+                       "network_policy_enforcement": "assessed separately by network_policy_smoke.py"})
         Path("reports").mkdir(exist_ok=True)
         Path("reports/kubernetes-smoke.json").write_text(json.dumps(result, indent=2) + "\n")
         print(json.dumps(result, indent=2))
