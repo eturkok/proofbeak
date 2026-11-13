@@ -5,6 +5,10 @@ It starts with a fresh operator configuration, uses the public MCP example clien
 `scenario.v1` format, and exports each condition's measured verdict and independent evidence.
 The definitions are ordinary user inputs; no new trial package or product operation is added.
 
+See the [recorded results](acceptance-results.tr.md) and [measured JSON](acceptance-results.json):
+the successful run observed 17 passing, 4 failing and 3 inconclusive candidate requirements,
+with verified cleanup and mutation-free same-key/restart retrievals.
+
 The questions are synthetic examples, not collected customer needs. The two HTTP catalogs
 are deliberately different local fixtures. This is a technical usability exercise, not
 independent human review, external-agent A/B scoring, novice onboarding or measured adoption.
@@ -37,6 +41,8 @@ original content. Missing HTTP fields are expected to remain inconclusive, rathe
 being treated as false or filled from an expected value. Eligibility applies to **each
 definition**; combine readiness, capacity and other conditions when all are required.
 No global provider ranking follows from these independent questions.
+HTTP conditions establish the returned field values; they do not independently exercise
+the reported capacity, elapsed retention period or audit-export operation.
 
 ## Run locally
 

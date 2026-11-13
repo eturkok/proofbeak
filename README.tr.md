@@ -159,6 +159,7 @@ artış henüz ölçülmemiştir. [Kararlılık kapsamı](docs/stability.md) · 
 | --- | --- |
 | Python kodu eklemeden kendi koşulumu tanımlamak | [Kullanıcı senaryoları](docs/scenarios.md) |
 | Temiz yapılandırmadan kanıta kadar 12 seçim senaryosunu denemek | [Uçtan uca değerlendirme](docs/acceptance-evaluation.md) |
+| Gerçekleştirilen 12 senaryonun sonuçlarını incelemek | [Ölçülen sonuçlar](docs/acceptance-results.tr.md) |
 | İki depolama servisini karşılaştırmak | [Depolama testi](docs/storage-comparison.md) |
 | Ajan bağlayıp MCP akışını çalıştırmak | [MCP kullanımı](docs/mcp-walkthrough.md) |
 | REST, tenant ve tool sözleşmelerini incelemek | [Ajan arayüzleri](docs/agent-interfaces.md) |

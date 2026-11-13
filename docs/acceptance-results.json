@@ -1,0 +1,390 @@
+{
+  "evaluation_id": "proofbeak.acceptance-evaluation.v1",
+  "application_version": "0.5.1",
+  "recorded_at": "2026-11-13T13:25:23.336121+00:00",
+  "ci_run_id": "43433333164",
+  "source_commit": "07a664d3366408d493110fb2e0f016297855f06a",
+  "manifest_sha256": "03096e7fe1e1e33c2f7d3826288d00bd509cba7f444dff1ed0778febdc2bee83",
+  "case_count": 12,
+  "candidate_observations": 24,
+  "verdict_counts": {
+    "pass": 17,
+    "fail": 4,
+    "inconclusive": 3
+  },
+  "all_cleanup_completed": true,
+  "provider_mutation_requests": {
+    "wsgidav": 45,
+    "apache": 45
+  },
+  "http_reads": {
+    "scenario:http:catalog-a": 8,
+    "scenario:http:catalog-b": 8
+  },
+  "checks": {
+    "fresh_cli_configuration": true,
+    "offline_config_check": true,
+    "same_key_stored_result_unchanged": true,
+    "restart_stored_result_unchanged": true,
+    "retry_or_restart_mutations": 0,
+    "evidence_hashes_verified": true
+  },
+  "limits": [
+    "Author-prepared synthetic needs and HTTP fixtures, not independent human pilot data.",
+    "No external model calls, A/B agent scoring, human onboarding or return-usage measurements.",
+    "Eligibility applies to each definition only; combine conditions when all are required."
+  ],
+  "cases": [
+    {
+      "case_id": "repeat-write",
+      "question": "Can a retried upload leave one object with the original content?",
+      "test_hash": "ff53a1656a7eb3eb97706caf5be97a524ee87f334e6b86666ba973a123ffc665",
+      "run_id": "273976eee2914c6c83ce46e463f70e24",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "dfb65b44b8ac0d33377201ab4fcbf4eeb48a8ffb5ec406f682567a3ee8740937",
+        "scenario:webdav:apache": "9facd6c7e9aa7ac58dc01dc538ad08bea621bcb2952f1bbfb508810576896e91"
+      },
+      "report_json": "repeat-write.json",
+      "report_html": "repeat-write.html",
+      "report_file_sha256": "1d6abd59ff34879255c90b382b13698e764ebbdaff5a44b5c55764a50f380216"
+    },
+    {
+      "case_id": "update-preserve",
+      "question": "Can one object be updated without modifying its neighbour?",
+      "test_hash": "27408d1e050c0175f1e838d8474e073e0232291a65ecb9fb4d99e549f2af8432",
+      "run_id": "50e95baffbe442429e44817e07722ef8",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "432eb8de5b7879a03521bfc8462c0164e49e188233dd49556df70467576bddcb",
+        "scenario:webdav:apache": "3162446682d83f38d4ffbf66dd5c795acbad4f90be1a59c89b84ec684fe8066b"
+      },
+      "report_json": "update-preserve.json",
+      "report_html": "update-preserve.html",
+      "report_file_sha256": "bec040b56293e6cfbb9170ee4040547abe25309e54b3a98736f2d0d9cd38953a"
+    },
+    {
+      "case_id": "delete-preserve",
+      "question": "Can one object be deleted while the other remains intact?",
+      "test_hash": "e4fd28cd32baba4d4165197e9a26f44af76f6a540b840db3a00abc9a18234fb7",
+      "run_id": "e26f7edc6328424eab4ae4e98e67c74e",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "a4c839eff52838ea843f08be50b1e4b00d92d1f92e52f7ff957e1900dddc78c2",
+        "scenario:webdav:apache": "dc0a1eb62b6bbb89943d924e3ae83c64417daf8ac7cb343a3e8c17acd301e7e0"
+      },
+      "report_json": "delete-preserve.json",
+      "report_html": "delete-preserve.html",
+      "report_file_sha256": "bb6033a8d5652c8f59f90f9a54fe631aea1f16867754b9852bc22218e9d87fdb"
+    },
+    {
+      "case_id": "repeat-delete",
+      "question": "Can deletion be repeated without damaging neighbouring data?",
+      "test_hash": "f3e554e08b9e3a649c706870dd73b9383dee1a55d980d382cdd4cae7a6d4945f",
+      "run_id": "9d649679e09948dbbb510af5a1acf3dc",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "36ea49e4ccb21349f8d14181be3b43c36cea18dc67e652de8c2c2795e156df47",
+        "scenario:webdav:apache": "26e161a710ea564ce231e8705c86530714748bbcfd2b0824df2d83315af425f2"
+      },
+      "report_json": "repeat-delete.json",
+      "report_html": "repeat-delete.html",
+      "report_file_sha256": "0194ae990c79676596e52f03db303c88b94a09f2874dec1e39600163c17089cb"
+    },
+    {
+      "case_id": "delete-absent",
+      "question": "Can deleting a missing key preserve the existing object?",
+      "test_hash": "bfeb85fe49d937e9870758badc39b51a01b6f6c1b4fc9db9831e5c5a7d3a1d85",
+      "run_id": "5b3fe60727fe44deac61a5e316434721",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "f78693c5a0e2c2608549f16ebf3c4ee2b36789023cc052408bdc51df7c6ef06f",
+        "scenario:webdav:apache": "662989c8cba3b155728c10473a6e1b33b2bc732ef15485bce1c1294078b1891d"
+      },
+      "report_json": "delete-absent.json",
+      "report_html": "delete-absent.html",
+      "report_file_sha256": "7052114f7ad94bd37a80841a10225a6d93a88119af3db6c44e8c94a4f682b16d"
+    },
+    {
+      "case_id": "utf8-roundtrip",
+      "question": "Are Turkish characters, emoji and line breaks preserved in stored content?",
+      "test_hash": "7f3dcb6c4a4df0a9240e82711d33f082b93b3fabb4574af65799e3172b364d21",
+      "run_id": "ee4c9106e81749ae86b7a2d0ee571446",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "969547a7c4aa62aab5c70f81e33083ffedd6a5524c0a62fbb962a7126aafd932",
+        "scenario:webdav:apache": "671a3ec0b25a5acea8999e36ae0dc804f5d3a8417a7997d5a5d8e8b3f913830a"
+      },
+      "report_json": "utf8-roundtrip.json",
+      "report_html": "utf8-roundtrip.html",
+      "report_file_sha256": "786dd8099ac97ac9ef94a134af71e12c04b016fab29ef249fe2fa3a36b1f52a0"
+    },
+    {
+      "case_id": "backup-update",
+      "question": "Can a backup retain the original contents while the working copy changes?",
+      "test_hash": "caa271a373345f8337db4fc0b11ec665a142e84eb59cdb955e377b6aa2aca8f9",
+      "run_id": "b40fd876693f4a69a1bc3c2f846c0cc0",
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "9ad53c5c5be07cf79bd388aa0100de64422224f1e1a658470f6ad345e8f78b41",
+        "scenario:webdav:apache": "2a1e7a9c7f7469fcfe60b14d309c95732f368a264f4780b77e3c51b56a47d8cf"
+      },
+      "report_json": "backup-update.json",
+      "report_html": "backup-update.html",
+      "report_file_sha256": "b79693bfb48bb35733fa1b8b77c5a2b61353c97e0cc147163e307abad12982be"
+    },
+    {
+      "case_id": "immutable-key",
+      "question": "Does the configured write operation preserve an existing archive value?",
+      "test_hash": "b925cce2c4a7a80e7e0a30d1c634b893bac749d4d8dff45222941a0b03b6a79f",
+      "run_id": "a6b0dbf52441409db323bb1572382b50",
+      "expected": {
+        "scenario:webdav:wsgidav": "fail",
+        "scenario:webdav:apache": "fail"
+      },
+      "observed": {
+        "scenario:webdav:wsgidav": "fail",
+        "scenario:webdav:apache": "fail"
+      },
+      "selection_status": "no_match",
+      "eligible_candidates": [],
+      "cleanup": {
+        "scenario:webdav:wsgidav": "cleaned",
+        "scenario:webdav:apache": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:webdav:wsgidav": "e344f56ddee912ed7a530422132210608bf678652e1a870520388e67a44d7999",
+        "scenario:webdav:apache": "a716709493aa872c6ba62e89ec74174166c99156896c358ba5cba939d7023d5c"
+      },
+      "report_json": "immutable-key.json",
+      "report_html": "immutable-key.html",
+      "report_file_sha256": "4f9f8744c969d8b1905ddbea76663036a3f7beb14757057d59e0dc43d8b1afd3"
+    },
+    {
+      "case_id": "ready-service",
+      "question": "Which candidate reports that it is ready?",
+      "test_hash": "dd7d333a944284936ba0b80d5928e23c1f623d91043acdfea7aece3e22b0c4bb",
+      "run_id": "e3c1ca5586a74cb3afcfb037feafe1a8",
+      "expected": {
+        "scenario:http:catalog-a": "pass",
+        "scenario:http:catalog-b": "fail"
+      },
+      "observed": {
+        "scenario:http:catalog-a": "pass",
+        "scenario:http:catalog-b": "fail"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:http:catalog-a"
+      ],
+      "cleanup": {
+        "scenario:http:catalog-a": "cleaned",
+        "scenario:http:catalog-b": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:http:catalog-a": "bd64a044a5b09ad4c47c571655afbb9c0260e76ade2af45e7319795dc2550b56",
+        "scenario:http:catalog-b": "5ee5f6c5ceba769e6f0d37c91b89658255d801ab408326d87407f52ca1f9d1ef"
+      },
+      "report_json": "ready-service.json",
+      "report_html": "ready-service.html",
+      "report_file_sha256": "94da198672f4b04039e285e2917532fcff73fa204f87126e3893872880bca6b9"
+    },
+    {
+      "case_id": "minimum-capacity",
+      "question": "Which candidate reports capacity for at least 1000 items?",
+      "test_hash": "919dc9aa23d59676d2835341ae37628baec5dc14309a2df7ade12f78596efce4",
+      "run_id": "c01308ce8e124e1f92074a3fd40f4e41",
+      "expected": {
+        "scenario:http:catalog-a": "fail",
+        "scenario:http:catalog-b": "pass"
+      },
+      "observed": {
+        "scenario:http:catalog-a": "fail",
+        "scenario:http:catalog-b": "pass"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:http:catalog-b"
+      ],
+      "cleanup": {
+        "scenario:http:catalog-a": "cleaned",
+        "scenario:http:catalog-b": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:http:catalog-a": "9c588c333e582120db0bedae5905f5b77718357da0ab967be2aeecaa600cf8f7",
+        "scenario:http:catalog-b": "ae5f74d8baa00964dd0291eb8f0865b867073aa3da41c82b43ba64ed2630d88b"
+      },
+      "report_json": "minimum-capacity.json",
+      "report_html": "minimum-capacity.html",
+      "report_file_sha256": "9b2926769058f483063ff55db40d9fb4796aa1675db34e85c8ab2e34cbc549a1"
+    },
+    {
+      "case_id": "retention-policy",
+      "question": "Which candidate reports at least 30 days of retention?",
+      "test_hash": "e31c9f41f299a9b6d56b9fffe165f0c5208b178e7b7d6e6c20940b3e696e619b",
+      "run_id": "9689e2ff8c8149189b3ba96312d98ce0",
+      "expected": {
+        "scenario:http:catalog-a": "pass",
+        "scenario:http:catalog-b": "inconclusive"
+      },
+      "observed": {
+        "scenario:http:catalog-a": "pass",
+        "scenario:http:catalog-b": "inconclusive"
+      },
+      "selection_status": "eligible_candidates",
+      "eligible_candidates": [
+        "scenario:http:catalog-a"
+      ],
+      "cleanup": {
+        "scenario:http:catalog-a": "cleaned",
+        "scenario:http:catalog-b": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:http:catalog-a": "6a3e4260cacceee90e00044f44175b11ededcd0999d24041b6f192832d72ee70",
+        "scenario:http:catalog-b": "fbc1445dcd2cde3ea1de4f740b321a5579a2aafa976350a23160b9aebefba5bc"
+      },
+      "report_json": "retention-policy.json",
+      "report_html": "retention-policy.html",
+      "report_file_sha256": "68c71274fbbd4658e016e8966c4ca79539d87bee77adcae493d02d0dffa3daf6"
+    },
+    {
+      "case_id": "audit-export",
+      "question": "Can either candidate establish that audit export is available?",
+      "test_hash": "f134ff4e99a46385ffc16cfaf3e88ccf7e2a292918a1a14718bab0c7ece8fa45",
+      "run_id": "131f391d1c2e46628e3330bb12c9890a",
+      "expected": {
+        "scenario:http:catalog-a": "inconclusive",
+        "scenario:http:catalog-b": "inconclusive"
+      },
+      "observed": {
+        "scenario:http:catalog-a": "inconclusive",
+        "scenario:http:catalog-b": "inconclusive"
+      },
+      "selection_status": "insufficient_evidence",
+      "eligible_candidates": [],
+      "cleanup": {
+        "scenario:http:catalog-a": "cleaned",
+        "scenario:http:catalog-b": "cleaned"
+      },
+      "evidence_hashes": {
+        "scenario:http:catalog-a": "d73293934c83fb022d4b5598c0c9e3c20337ac9af847ae91c80c7da00ac054cd",
+        "scenario:http:catalog-b": "86f8417ae5da137b3e0dc4c6f77e4ec1b4a9c6e108391eaa7a2e8664ce71d036"
+      },
+      "report_json": "audit-export.json",
+      "report_html": "audit-export.html",
+      "report_file_sha256": "830832a8e8110e4811d44e6a7dce086d5da92f554f6117805f0525cb6d78f20e"
+    }
+  ]
+}
