@@ -79,8 +79,8 @@ class MCPConnector(ScopedConnector):
                     self.session = await stack.enter_async_context(ClientSession(streams[0], streams[1],
                                                                   read_timeout_seconds=timedelta(seconds=5)))
                     await self.session.initialize()
-                    self.tools, cursor = {}, None
-                    while True:
+                    self.tools, cursor, cursors = {}, None, set()
+                    for _ in range(8):
                         page = await self.session.list_tools(cursor=cursor)
                         for tool in page.tools:
                             if tool.name in self.tools or len(self.tools) >= 128:
@@ -89,6 +89,11 @@ class MCPConnector(ScopedConnector):
                         cursor = page.nextCursor
                         if not cursor:
                             break
+                        if cursor in cursors:
+                            raise ValueError("repeated MCP discovery cursor")
+                        cursors.add(cursor)
+                    else:
+                        raise ValueError("MCP discovery page budget exceeded")
                     self.loop, self.stop = asyncio.get_running_loop(), asyncio.Event()
                     ready.set()
                     await self.stop.wait()

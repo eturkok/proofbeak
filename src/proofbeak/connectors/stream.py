@@ -88,7 +88,7 @@ class RedisConnector(Connector):
             send(arguments)
             return read()
         except (OSError, ValueError, UnicodeError):
-            raise ProviderError("stream_outcome_unknown" if arguments[0] in {"SET", "XADD", "DEL"} else "observation_unavailable") from None
+            raise ProviderError("write_outcome_unknown" if arguments[0] in {"SET", "XADD", "DEL", "EVAL"} else "observation_unavailable") from None
         finally:
             if sock:
                 sock.close()
@@ -109,8 +109,10 @@ class RedisConnector(Connector):
         keys = [prefix + ":" + suffix for suffix in ("events", "results", "owner")]
         if not self.command("EXISTS", *keys):
             return
-        self._owned(resource)
-        self.command("DEL", *keys)
+        removed = self.command("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('DEL',unpack(KEYS)) else return -1 end",
+                               len(keys), keys[-1], *keys[:-1], self.scope(resource))
+        if removed == -1:
+            raise ProviderError("ownership_unverified")
         if self.command("EXISTS", *keys):
             raise ProviderError("cleanup_unconfirmed")
 

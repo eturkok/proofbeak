@@ -68,10 +68,13 @@ class RESTConnector(ScopedConnector):
         path = binding["path"]
         for key in re.findall(r"\{([^{}]+)\}", path):
             value = scope if key == "scope" else arguments.get(key)
-            if type(value) not in {str, int, bool} or str(value) in {".", ".."} or len(str(value)) > 256:
+            if type(value) not in {str, int, bool} or str(value) in {".", ".."} or len(str(value)) > 256 or \
+                    any(char in "/\\%" or ord(char) < 32 or ord(char) == 127 for char in str(value)):
                 raise ProviderError("scenario_arguments_invalid")
             path = path.replace("{" + key + "}", quote(str(value), safe=""))
-        query = template(binding.get("query", {}), arguments, scope)
+        query_bindings = {key: value for key, value in binding.get("query", {}).items()
+                          if not (isinstance(value, dict) and set(value) == {"arg"} and value["arg"] not in arguments)}
+        query = template(query_bindings, arguments, scope)
         if query:
             path += "?" + urlencode(query, doseq=True)
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -83,7 +86,14 @@ class RESTConnector(ScopedConnector):
         response = self.transport.request(binding["method"], self.origin + path, body=body, headers=headers,
                                           allowed=tuple(binding.get("statuses", [200, 201, 204])))
         try:
-            data = json.loads(response.body) if response.body else None
+            def unique(pairs):
+                result = {}
+                for key, value in pairs:
+                    if key in result:
+                        raise ValueError("duplicate response key")
+                    result[key] = value
+                return result
+            data = json.loads(response.body, object_pairs_hook=unique) if response.body else None
             canonical(data)
         except (ValueError, UnicodeDecodeError):
             raise ProviderError("invalid_observation") from None

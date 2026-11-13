@@ -60,6 +60,7 @@ class CapabilityTests(unittest.TestCase):
 
     def test_write_cannot_be_disguised_as_read(self):
         self.spec['observe'][0] = copy.deepcopy(self.spec['steps'][0])
+        self.spec['observe'][0]['id'] = 'row'
         pack, trial = builtins().prepare(self.spec)
         with self.assertRaisesRegex(ValueError, 'read-only'):
             pack.validate_adapter(trial, self.adapter)
