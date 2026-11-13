@@ -109,6 +109,15 @@ class HTTPScenarioTests(unittest.TestCase):
                            "op": "contains", "value": 2}]
         self.assertEqual([row["verdict"] for row in self.run_spec(spec)["candidates"]], ["pass", "pass"])
 
+    def test_setup_read_can_supply_the_same_observer_parameters_in_both_phases(self):
+        self.spec["setup"] = [{"id": "lookup", "op": "http.get", "args": copy.deepcopy(self.spec["observe"][0]["args"])}]
+        self.spec["observe"][0]["args"]["params"]["key"] = {"ref": ["setup", "lookup", "json", "values", 0]}
+        self.spec["expect"] = [{"name": "contains_two", "actual": ["after", "record", "json", "values"],
+                                "op": "contains", "value": 2}]
+        self.assertEqual([row["verdict"] for row in self.run_spec()["candidates"]], ["pass", "pass"])
+        self.assertEqual(self.servers[0].reads, ["/items/sample", "/items/1", "/items/1"])
+        self.assertEqual(self.servers[1].reads, ["/records/sample", "/records/1", "/records/1"])
+
     def test_missing_projection_fields_cannot_pass_ne(self):
         self.servers[0].mode = "missing"
         self.spec["expect"] = [{"name": "unknown", "actual": ["after", "record", "json", "ready"],

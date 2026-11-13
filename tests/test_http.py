@@ -50,6 +50,36 @@ class HttpTests(unittest.TestCase):
             self.assertEqual(self.client.get(route).status_code, 401)
         self.assertEqual(self.client.get("/health").status_code, 200)
 
+    def test_custom_scenario_authoring_validation_and_run(self):
+        from proofbeak.adapters.scenario import ScenarioAdapter
+        from proofbeak.packs.scenario import ScenarioPack
+
+        provider_root = self.service.root.parent / "scenario-objects"
+        self.service.tenants["a"].providers["scenario:filesystem"] = lambda: ScenarioAdapter(FilesystemAdapter(provider_root))
+        spec = ScenarioPack().example()
+        payload = {"test": spec, "candidates": ["scenario:filesystem"]}
+        self.assertEqual(self.client.post("/trials/validate", json=payload).status_code, 401)
+        response = self.client.post("/trials/validate", json=payload, headers=self.headers())
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["valid"])
+        self.assertFalse(response.json()["execution_performed"])
+        self.assertEqual(self.service.history("a")["runs"], [])
+        self.assertFalse(provider_root.exists())
+        self.assertEqual(self.client.post("/trials/validate", json=payload, headers=self.headers("b")).status_code, 403)
+        invalid = json.loads(json.dumps(payload))
+        invalid["test"]["steps"][0]["op"] = "arbitrary.code"
+        checked = self.client.post("/trials/validate", json=invalid, headers=self.headers()).json()
+        self.assertFalse(checked["valid"])
+        self.assertTrue(checked["issues"])
+        self.assertEqual(self.client.post("/runs", json=invalid, headers=self.headers()).status_code, 422)
+        self.assertFalse(provider_root.exists())
+        created = self.client.post("/runs", json=payload, headers=self.headers())
+        self.assertEqual(created.status_code, 202)
+        self.service.process_next()
+        report = self.client.get("/runs/" + created.json()["run_id"] + "/comparison", headers=self.headers()).json()
+        self.assertEqual(report["candidates"][0]["verdict"], "pass")
+        self.assertEqual(list(provider_root.iterdir()), [])
+
     def test_run_progress_comparison_and_evidence(self):
         run_id = self.submit()
         self.assertEqual(self.client.get(f"/runs/{run_id}", headers=self.headers()).json()["state"], "queued")

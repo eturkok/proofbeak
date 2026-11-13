@@ -148,6 +148,15 @@ class ScenarioTests(unittest.TestCase):
         self.assertIsNone(result.reason)
         self.assertEqual(result.payload["report"]["candidates"][0]["verdict"], "pass")
 
+    def test_observation_budget_exhaustion_stops_the_workflow_without_a_false_pass(self):
+        self.spec["fixture"]["content"] = "x" * 4096
+        self.spec["steps"] = [{"id": "read_" + str(index), "op": "object.get", "args": {
+            "key": {"ref": ["fixture", "key"]}}} for index in range(16)]
+        row = self.run_spec()
+        self.assertEqual(row["verdict"], "inconclusive")
+        self.assertEqual(row["reason_code"], "observation_budget_exceeded")
+        self.assertEqual(row["cleanup_status"], "cleaned")
+
     def test_generic_conditions_are_strict_and_support_comparisons(self):
         for operator, value, actual, expected_verdict in (("eq", True, 1, "fail"), ("ne", False, 0, "pass"),
                 ("contains", True, [1], "fail"), ("length_eq", 2, [1, 2], "pass"),
