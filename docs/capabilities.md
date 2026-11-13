@@ -34,10 +34,10 @@ is POST. External MCP tool annotations do not grant permission to run a mutation
 
 ## Local SQL quick start
 
-From a checkout:
+Install the connector extra (Python 3.11+ on Linux/macOS):
 
 ```bash
-python -m pip install -e '.[connectors]'
+python -m pip install 'proofbeak[connectors]==0.7.0'
 proofbeak example --trial scenario.v2 --output scenario-v2.json
 ```
 
@@ -96,6 +96,12 @@ The scenario cannot override scope, choose a URL, provide a SQL statement or lau
 envelope, such as `["json","items"]` or `["status"]`. MCP paths start at structured tool
 output (or one JSON text result). Missing projected fields remain missing and cannot pass a
 condition. Output schemas are checked before a result becomes an observation.
+
+For APIs that return structured model output inside a JSON string, `decode_json` lists
+projected fields to parse as JSON before checking them. For example, project `answer` from
+`["json","choices",0,"message","content"]` and set `"decode_json":["answer"]` to apply
+an object schema to that model response. Invalid JSON and duplicate keys remain invalid
+observations. Other fields stay unchanged.
 
 Keep credentials in the operator process's environment. `connection.secret_env` maps a
 private field to its environment variable name: PostgreSQL uses `dsn`; Redis uses `password`

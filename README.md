@@ -37,7 +37,7 @@ example needs no provider account or model service:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install proofbeak==0.6.0
+python -m pip install proofbeak==0.7.0
 proofbeak example --output scenario.json
 proofbeak validate scenario.json \
   --candidate scenario:filesystem
@@ -58,9 +58,11 @@ multiple configured services.
 Use Proofbeak through **CLI, REST or MCP**. Provider connections and credentials are
 configured by the operator; the external agent runtime stays under your control.
 
-User-defined scenarios currently support object write/read/list/delete operations and
-configured read-only HTTP JSON requests. Composing these operations requires only a JSON
-definition. Supporting a new protocol or operation requires a trusted connector.
+Compose scenarios over configured REST APIs, MCP tools, SQLite/PostgreSQL transactions,
+Redis Streams and HTTP search/model services. Connectors publish input/output schemas;
+scenarios can include bounded polling, output-schema and ranking checks. Follow the
+[capability guide](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md) for
+setup and operating limits. New scenarios use JSON; new protocols require a trusted connector.
 
 Run directly in Python, in a container or on standard Kubernetes/Helm. The current deployment
 scope uses one coordinator with SQLite state. See the deployment guide for configuration
@@ -70,6 +72,7 @@ and operating limits.
 
 - [Installation and package artifacts](https://github.com/eturkok/proofbeak/blob/main/docs/installation.md)
 - [Scenarios and examples](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md)
+- [REST, MCP, SQL, stream and model connectors](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md)
 - [REST and MCP integration](https://github.com/eturkok/proofbeak/blob/main/docs/agent-interfaces.md)
 - [Connectors and extension contracts](https://github.com/eturkok/proofbeak/blob/main/docs/trial-packs.md)
 - [Evidence history and reuse](https://github.com/eturkok/proofbeak/blob/main/docs/evidence-lifecycle.md)

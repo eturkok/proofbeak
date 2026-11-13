@@ -52,9 +52,25 @@ def verify(manifest):
             allow_nan=False).encode()).hexdigest()
         assert digest == row["evidence_hash"]
         assert not list((root / ".proofbeak/storage").iterdir())
+        subprocess.run([str(python), "-m", "pip", "install", "--disable-pip-version-check", "--no-cache-dir",
+            "--index-url", "https://pypi.org/simple", "--only-binary=:all:", name + "[connectors]==" + version],
+            cwd=root, env=environment, check=True, stdout=subprocess.DEVNULL)
+        subprocess.run([str(cli), "example", "--trial", "scenario.v2", "--output", "scenario-v2.json"],
+            cwd=root, env=environment, check=True)
+        (root / "providers.json").write_text(json.dumps({"capability:sqlite": {"kind": "sqlite", "connection": {}}}))
+        subprocess.run([str(cli), "run", "scenario-v2.json", "--providers", "providers.json",
+            "--candidate", "capability:sqlite", "--key", "public-pypi-capabilities", "--output", "capability-report.json"],
+            cwd=root, env=environment, check=True)
+        capability = json.loads((root / "capability-report.json").read_text())["candidates"][0]
+        assert capability["verdict"] == "pass" and capability["cleanup_status"] == "cleaned"
+        capability_hash = hashlib.sha256(json.dumps(capability["evidence"], sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+        assert capability_hash == capability["evidence_hash"]
+        assert not list((root / ".proofbeak/provider-data/cli/sqlite").iterdir())
     return {"project_url": f"https://pypi.org/project/{name}/{version}/", "version": version,
             "verified_file_hashes": observed, "public_index_install": "pass", "trial": "pass",
-            "cleanup": "cleaned", "evidence_hash": digest}
+            "cleanup": "cleaned", "evidence_hash": digest, "public_connectors_install": "pass",
+            "capability_trial": "pass", "capability_evidence_hash": capability_hash}
 
 
 if __name__ == "__main__":

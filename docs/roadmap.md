@@ -40,6 +40,9 @@ demand-driven expansion gates below remain open.
 
 ## User-defined scenarios 0.5.0
 
+The subsequent [capability scenario format](capabilities.md) extends the connector scope
+while retaining this original format's behavior.
+
 - [x] Let callers define setup, actions, independent observers and acceptance predicates as JSON.
 - [x] Publish a machine-readable schema and candidate operation/route capabilities.
 - [x] Validate through CLI, REST and MCP without creating work or accessing providers.
@@ -63,6 +66,22 @@ does not enable arbitrary HTTP writes, executable scripts or a natural-language 
 
 This improves the caller-owned scenario workflow without adding case-specific product code,
 new connectors or a natural-language compiler. Human-pilot gates below remain open.
+
+## Capability expansion 0.7.0
+
+- [x] Publish per-operation input/output schemas and read-only policy under a shared contract.
+- [x] Add scenario.v2 without changing existing scenario.v1 or fixed domain definitions.
+- [x] Add named REST mutations/observations and selected offline OpenAPI operation import.
+- [x] Test other MCP servers through actual stdio and Streamable HTTP clients.
+- [x] Add isolated SQLite/PostgreSQL statements, transactions, rollback and enforced read-only observations.
+- [x] Add scoped Redis Streams and observe results produced by an asynchronous consumer.
+- [x] Connect HTTP search/model services and evaluate explicit schema/content/ranking conditions.
+- [x] Add bounded final-observation polling, consecutive passing samples and late-response handling.
+- [x] Preserve ownership-checked cleanup, tenant profiles, private worker credentials and retry semantics.
+- [x] Qualify real protocols, installed wheels, rootless containers and persistent Kubernetes workers.
+
+Model/search protocol qualification uses local reference data and deterministic model fixtures.
+External model quality, developer adoption and demand remain the independent pilot gates below.
 
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |

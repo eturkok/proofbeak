@@ -218,6 +218,23 @@ class CapabilityTests(unittest.TestCase):
             with self.subTest(profile=profile), self.assertRaises(ValueError):
                 build_connector('capability:invalid', profile)
 
+    def test_cli_reports_cannot_replace_operator_profiles(self):
+        import io
+        import json
+        from contextlib import redirect_stderr
+        from proofbeak.cli import main
+        spec = self.root / 'scenario.json'
+        spec.write_text(json.dumps(self.spec))
+        profiles = self.root / 'providers.json'
+        original = json.dumps({'capability:sqlite': {'kind': 'sqlite', 'connection': {}}})
+        profiles.write_text(original)
+        with redirect_stderr(io.StringIO()):
+            code = main(['run', str(spec), '--candidate', 'capability:sqlite', '--providers', str(profiles),
+                         '--key', 'protected', '--output', str(profiles), '--db', str(self.root / 'cli.sqlite3')])
+        self.assertEqual(code, 3)
+        self.assertEqual(profiles.read_text(), original)
+        self.assertFalse((self.root / 'cli.sqlite3').exists())
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -8,6 +8,30 @@
   independent mutation-request journals and unchanged same-key/restart retrievals. This is
   technical qualification, not human pilot or external-agent decision-quality evidence.
 
+## 0.7.0 — 2026-11-13
+
+Expand user-defined acceptance scenarios across service protocols with a common capability
+contract. Existing `scenario.v1`, storage/calendar formats and evidence/state compatibility
+remain available. The current deployment scope remains one coordinator.
+
+- Add `scenario.v2`: operator-registered logical operations with closed input/output JSON
+  schemas, independent observations and caller-defined acceptance conditions.
+- Add REST CRUD bindings and selected offline OpenAPI JSON import, MCP target clients over
+  stdio/Streamable HTTP, isolated SQLite/PostgreSQL transactions and Redis Streams.
+- Support HTTP search/model endpoints, JSON Schema checks, set comparison and recall@k
+  against caller-supplied references. Model integration is optional; no embedded LLM is required.
+- Add bounded eventual observations and consecutive passing samples. Actions are never
+  repeated while polling; late/unavailable observations do not become passing evidence.
+- Verify ownership before remote mutations and cleanup, confirm resource absence, enforce
+  read-only SQL observations and retain poll/operation provenance with measured timings.
+- Expose the same capabilities through CLI, REST and the existing twelve MCP tools, with
+  private worker credential codecs and tenant-owned profiles.
+- Qualify real REST/MCP/PostgreSQL/Redis protocols, installed-wheel workflows on Python
+  3.11–3.14, rootless offline containers and persistent Kubernetes workers. Search/model
+  fixtures establish protocol behavior, not external model quality or human adoption.
+- Add `connectors` and `postgres` extras, operator documentation and editable examples.
+  Package/application 0.7.0; Helm chart 0.5.0.
+
 ## 0.6.0 — 2026-11-13
 
 Published [Python wheel/source distributions on PyPI](https://pypi.org/project/proofbeak/0.6.0/)
