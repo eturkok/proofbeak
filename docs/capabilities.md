@@ -34,10 +34,10 @@ is POST. External MCP tool annotations do not grant permission to run a mutation
 
 ## Local SQL quick start
 
-From a checkout:
+Install the connector extra (Python 3.11+ on Linux/macOS):
 
 ```bash
-python -m pip install -e '.[connectors]'
+python -m pip install 'proofbeak[connectors]==0.7.0'
 proofbeak example --trial scenario.v2 --output scenario-v2.json
 ```
 

@@ -38,7 +38,7 @@ Linux/macOS üzerinde Python 3.11+ kullanın. Paketi PyPI'dan sanal ortama kurun
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install proofbeak==0.6.0
+python -m pip install proofbeak==0.7.0
 proofbeak example --output scenario.json
 proofbeak validate scenario.json \
   --candidate scenario:filesystem
@@ -60,9 +60,11 @@ Proofbeak'i **CLI, REST veya MCP** üzerinden kullanabilirsiniz. Sağlayıcı ba
 kimlik bilgileri operatör tarafından yapılandırılır; ajanınızın çalıştığı ortam sizin
 kontrolünüzde kalır.
 
-Kullanıcı tanımlı senaryolar şu anda nesne yazma/okuma/listeleme/silme işlemlerini ve
-yapılandırılmış HTTP JSON okumalarını destekler. Bu işlemleri birleştirmek için JSON tanımı
-yeterlidir. Yeni bir protokol veya işlem için güvenilir bir bağlantı geliştirmek gerekir.
+Yapılandırılmış REST API'leri, MCP araçları, SQLite/PostgreSQL transaction'ları, Redis Streams
+ve HTTP arama/model servisleri üzerinde senaryo oluşturabilirsiniz. Bağlantılar girdi/çıktı
+şemalarını sunar; senaryolar süreli gözlem, çıktı şeması ve sıralama kontrolleri içerebilir.
+Kurulum ve işletim sınırları için [bağlantı rehberine](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md)
+bakın. Yeni senaryolar JSON ile yazılır; yeni protokoller için güvenilir bağlantı geliştirilir.
 
 Doğrudan Python, konteyner veya standart Kubernetes/Helm ile çalışır. Mevcut kurulum kapsamı,
 SQLite durumu üzerinde tek koordinatör kullanır. Yapılandırma ve işletim sınırları için
@@ -72,6 +74,7 @@ dağıtım rehberine bakın.
 
 - [Kurulum ve paket dosyaları](https://github.com/eturkok/proofbeak/blob/main/docs/installation.md)
 - [Senaryo yazımı ve örnekler](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md)
+- [REST, MCP, SQL, akış ve model bağlantıları](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md)
 - [REST ve MCP entegrasyonu](https://github.com/eturkok/proofbeak/blob/main/docs/agent-interfaces.md)
 - [Bağlantılar ve genişletme sözleşmesi](https://github.com/eturkok/proofbeak/blob/main/docs/trial-packs.md)
 - [Kanıt geçmişi ve yeniden kullanım](https://github.com/eturkok/proofbeak/blob/main/docs/evidence-lifecycle.md)
