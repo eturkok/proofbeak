@@ -13,10 +13,16 @@ they needed, candidates considered, the documentation they read, what they chose
 later proved wrong or uncertain. Record pseudonymous developer IDs. Do not collect production
 credentials, customer records, or unrelated account data. Preparation here sends no invitations.
 
-Choose twelve distinct, closed decision cases from those real needs. The currently executable
-packages cover moving one calendar occurrence and writing one storage key twice. Cases outside
-those contracts require an explicit new package before measured trials; a prose question is
-not automatically compiled into arbitrary provider actions.
+Choose twelve distinct, closed decision cases from those real needs. Callers can compose
+`scenario.v1` definitions from the published object operations or configured HTTP JSON reads;
+the earlier calendar/storage packages remain compatible. A new condition using those existing
+capabilities needs a definition, not a Python case package. An unsupported protocol or operation
+requires trusted connector work; prose is not automatically compiled into provider actions.
+
+The [automated acceptance evaluation](acceptance-evaluation.md) supplies twelve author-prepared
+questions and actual provider reports to exercise the technical workflow. Its synthetic needs
+and same-author references cannot substitute for the real questions, independent reviews,
+external-model attempts or human adoption observations required by this protocol.
 
 Each case names one to four candidates, hashes the exact test JSON and candidate documentation,
 and records two reviewers' independent candidate judgments: pass, fail, or inconclusive.

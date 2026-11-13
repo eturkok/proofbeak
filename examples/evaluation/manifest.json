@@ -1,0 +1,162 @@
+{
+  "id": "proofbeak.acceptance-evaluation.v1",
+  "provenance": "Author-prepared synthetic selection questions; no independent human reviewers or external agent experiment.",
+  "cases": [
+    {
+      "id": "repeat-write",
+      "question": "Can a retried upload leave one object with the original content?",
+      "definition": "../scenario.repeat_put.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "update-preserve",
+      "question": "Can one object be updated without modifying its neighbour?",
+      "definition": "../scenario.update_and_preserve.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "delete-preserve",
+      "question": "Can one object be deleted while the other remains intact?",
+      "definition": "../scenario.delete_and_preserve.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "repeat-delete",
+      "question": "Can deletion be repeated without damaging neighbouring data?",
+      "definition": "repeat_delete.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "delete-absent",
+      "question": "Can deleting a missing key preserve the existing object?",
+      "definition": "delete_absent.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "utf8-roundtrip",
+      "question": "Are Turkish characters, emoji and line breaks preserved in stored content?",
+      "definition": "utf8_roundtrip.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "backup-update",
+      "question": "Can a backup retain the original contents while the working copy changes?",
+      "definition": "backup_then_update.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "pass",
+        "scenario:webdav:apache": "pass"
+      }
+    },
+    {
+      "id": "immutable-key",
+      "question": "Does the configured write operation preserve an existing archive value?",
+      "definition": "immutable_key.json",
+      "candidates": [
+        "scenario:webdav:wsgidav",
+        "scenario:webdav:apache"
+      ],
+      "expected": {
+        "scenario:webdav:wsgidav": "fail",
+        "scenario:webdav:apache": "fail"
+      }
+    },
+    {
+      "id": "ready-service",
+      "question": "Which candidate reports that it is ready?",
+      "definition": "http_ready.json",
+      "candidates": [
+        "scenario:http:catalog-a",
+        "scenario:http:catalog-b"
+      ],
+      "expected": {
+        "scenario:http:catalog-a": "pass",
+        "scenario:http:catalog-b": "fail"
+      }
+    },
+    {
+      "id": "minimum-capacity",
+      "question": "Which candidate reports capacity for at least 1000 items?",
+      "definition": "http_capacity.json",
+      "candidates": [
+        "scenario:http:catalog-a",
+        "scenario:http:catalog-b"
+      ],
+      "expected": {
+        "scenario:http:catalog-a": "fail",
+        "scenario:http:catalog-b": "pass"
+      }
+    },
+    {
+      "id": "retention-policy",
+      "question": "Which candidate reports at least 30 days of retention?",
+      "definition": "http_retention.json",
+      "candidates": [
+        "scenario:http:catalog-a",
+        "scenario:http:catalog-b"
+      ],
+      "expected": {
+        "scenario:http:catalog-a": "pass",
+        "scenario:http:catalog-b": "inconclusive"
+      }
+    },
+    {
+      "id": "audit-export",
+      "question": "Can either candidate establish that audit export is available?",
+      "definition": "http_audit.json",
+      "candidates": [
+        "scenario:http:catalog-a",
+        "scenario:http:catalog-b"
+      ],
+      "expected": {
+        "scenario:http:catalog-a": "inconclusive",
+        "scenario:http:catalog-b": "inconclusive"
+      }
+    }
+  ]
+}

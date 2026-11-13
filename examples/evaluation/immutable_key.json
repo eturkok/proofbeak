@@ -1,0 +1,113 @@
+{
+  "id": "scenario.v1",
+  "name": "An archive key must preserve its first value after an overwrite attempt",
+  "fixture": {
+    "key": "archive.txt",
+    "original": "archived version 1",
+    "replacement": "replacement version 2"
+  },
+  "setup": [
+    {
+      "id": "seed",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "original"
+          ]
+        }
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "overwrite_attempt",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "replacement"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "archive",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "original_present",
+      "actual": [
+        "before",
+        "archive",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "fixture",
+          "original"
+        ]
+      }
+    }
+  ],
+  "expect": [
+    {
+      "name": "original_preserved",
+      "actual": [
+        "after",
+        "archive",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "archive",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "one_object",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    }
+  ]
+}
