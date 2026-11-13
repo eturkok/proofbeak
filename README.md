@@ -2,81 +2,100 @@
 
 **Check whether a service meets your requirements. Decide with evidence.**
 
-[PyPI](https://pypi.org/project/proofbeak/)
+[PyPI](https://pypi.org/project/proofbeak/) · [Documentation](https://github.com/eturkok/proofbeak/tree/main/docs)
 
 Proofbeak is a self-hosted acceptance-testing and evidence service for developers and AI
-agents. Define the behavior your application needs, choose candidate services, and run the
-same scenario against each one. Proofbeak reports what it observed so you can make an
-informed service-selection or integration decision.
+agents. Define the behavior your application needs, run the same test against configured
+services, and inspect independently observed results before choosing an integration or release.
 
-You write your own scenarios in JSON by combining available connector operations, test
-data and acceptance conditions. The included examples are starting points you can adapt.
+For example: write data through an API, read it independently, and check that the returned
+fields match your requirements. Repeat with different data or candidate services; compare
+the result with a previous release. Proofbeak records what happened and whether cleanup succeeded.
 
-## How it works
+You define scenarios through the visual editor or JSON using connector operations, test data
+and acceptance conditions. New cases and data combinations do not require changes to this package.
 
-1. **Define** the preparation, actions, observations and expected results.
-2. **Choose** compatible services from the configured candidates.
-3. **Validate** the definition before starting provider work.
-4. **Run** the trial and check its outcome through independent reads.
-5. **Inspect** the comparison, evidence and separate cleanup status.
+## Start in the browser
 
-| Result | Meaning |
-| --- | --- |
-| `pass` | The observations satisfy the requested conditions. |
-| `fail` | An observed value violates a requested condition. |
-| `inconclusive` | Missing observations or an operational issue prevent a conclusion. |
-
-JSON and HTML reports include expected and observed values, before/after records and
-evidence provenance. The developer or external agent makes the final choice.
-
-## Quick start
-
-Use Python 3.11+ on Linux or macOS. Install from PyPI in a virtual environment; the local
-example needs no provider account or model service:
+Use Python 3.11+ on Linux or macOS, in a virtual environment:
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install proofbeak==0.7.0
-proofbeak example --output scenario.json
-proofbeak validate scenario.json \
-  --candidate scenario:filesystem
-proofbeak run scenario.json \
-  --candidate scenario:filesystem --key first-trial \
-  --output reports/first-trial.json --html reports/first-trial.html
+python -m pip install 'proofbeak[agents,connectors]==0.8.0'
+proofbeak studio
 ```
 
-Open `reports/first-trial.html` to inspect the result. The example uses disposable files.
-Copy the JSON and edit it for your condition; use a new key for a changed definition.
-Repeating the same request and key retrieves the original run.
+Open the displayed local address and sign in with the access key printed by the launcher.
+Choose **Try a local example**, edit its values, then **Validate & preview** and **Run test package**.
+The example uses actual disposable SQLite data. No cloud account, model or external database
+is needed. Configuration, results and signing identity persist in your private local workspace.
 
-Follow the [scenario guide](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md) to author a definition and apply it to
-multiple configured services.
+The [workspace guide](https://github.com/eturkok/proofbeak/blob/main/docs/workspace.md) covers
+your own service profiles, visual/JSON authoring, safe retries, history, comparisons and exports.
 
-## Interfaces and scope
+## What you can do
 
-Use Proofbeak through **CLI, REST or MCP**. Provider connections and credentials are
-configured by the operator; the external agent runtime stays under your control.
+| Capability | Use |
+| --- | --- |
+| Guided authoring | Choose configured operations and independent observers; specify your expected results. |
+| Suites and parameter matrices | Run multiple scenarios and bounded data combinations against compatible services. |
+| Release comparisons | Identify per-condition regressions, improvements and changed observations in compatible historical runs. |
+| CI gates and reports | Export JSON, HTML, JUnit and Markdown; fail CI on rejected or incomplete evidence. |
+| Web, CLI, REST and MCP | Use the same execution and evidence service from a browser, automation or an external agent. |
+| Connector SDK | Install trusted independent Python connector packages for additional protocols. |
+| Signed evidence | Export Ed25519-signed records and verify content offline against an independently trusted public key. |
 
-Compose scenarios over configured REST APIs, MCP tools, SQLite/PostgreSQL transactions,
-Redis Streams and HTTP search/model services. Connectors publish input/output schemas;
-scenarios can include bounded polling, output-schema and ranking checks. Follow the
-[capability guide](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md) for
-setup and operating limits. New scenarios use JSON; new protocols require a trusted connector.
+Compose tests over configured REST APIs, MCP tools, SQLite/PostgreSQL transactions, Redis
+Streams and HTTP search/model endpoints. Existing storage and calendar adapters remain
+available. Provider credentials and executable bindings belong to the operator. Additional
+protocols require a connector; business conditions remain yours.
 
-Run directly in Python, in a container or on standard Kubernetes/Helm. The current deployment
-scope uses one coordinator with SQLite state. See the deployment guide for configuration
-and operating limits.
+## Use the CLI
 
-## Documentation
+The core CLI has no third-party Python dependencies. This suite tests three values against
+actual disposable local files:
 
-- [Installation and package artifacts](https://github.com/eturkok/proofbeak/blob/main/docs/installation.md)
-- [Scenarios and examples](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md)
-- [REST, MCP, SQL, stream and model connectors](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md)
-- [REST and MCP integration](https://github.com/eturkok/proofbeak/blob/main/docs/agent-interfaces.md)
-- [Connectors and extension contracts](https://github.com/eturkok/proofbeak/blob/main/docs/trial-packs.md)
-- [Evidence history and reuse](https://github.com/eturkok/proofbeak/blob/main/docs/evidence-lifecycle.md)
-- [Deployment](https://github.com/eturkok/proofbeak/blob/main/docs/deployment.md) · [Backup and recovery](https://github.com/eturkok/proofbeak/blob/main/docs/state-recovery.md)
-- [Validation results](https://github.com/eturkok/proofbeak/blob/main/docs/acceptance-evaluation.md) · [Release notes](https://github.com/eturkok/proofbeak/blob/main/CHANGELOG.md)
+```bash
+python -m pip install proofbeak==0.8.0
+proofbeak suite example --output acceptance.json
+proofbeak suite validate acceptance.json
+proofbeak suite run acceptance.json --key first-suite \
+  --output reports/suite.json --html reports/suite.html \
+  --junit reports/junit.xml --summary reports/summary.md
+proofbeak gate reports/suite.json
+```
 
-[Contributing](https://github.com/eturkok/proofbeak/blob/main/CONTRIBUTING.md) · [Architecture](https://github.com/eturkok/proofbeak/blob/main/docs/architecture.md) · [Roadmap](https://github.com/eturkok/proofbeak/blob/main/docs/roadmap.md) · [Apache-2.0](https://github.com/eturkok/proofbeak/blob/main/LICENSE)
+Edit the definition for your requirement and use a new key for an intentional new run.
+Repeating an unchanged request and key retrieves the original execution without replaying writes.
+
+## Read the result
+
+| Result | Meaning |
+| --- | --- |
+| `pass` | Recorded observations satisfy your acceptance conditions. |
+| `fail` | An observed value violates a condition. |
+| `inconclusive` | Missing observations or an operational issue prevent a conclusion. |
+
+Cleanup is reported separately. The CI gate requires actual observations, passing acceptance
+and clean resources. A valid signature establishes record integrity and signer identity for
+the chosen key; it does not certify a provider or prove it still behaves the same way.
+
+## Deploy and extend
+
+Run directly in Python, in a container or on standard Kubernetes/Helm. The supported
+deployment uses one coordinator with SQLite state, tenant-bound access, bounded workers
+and explicit recovery. OpenShift is optional. Remote SSO, multi-DC operation and a shared
+public evidence catalog are outside this release. Technical qualification does not establish
+human adoption or an improvement in external-agent decision quality.
+
+- [Installation and artifacts](https://github.com/eturkok/proofbeak/blob/main/docs/installation.md)
+- [Browser workspace](https://github.com/eturkok/proofbeak/blob/main/docs/workspace.md) · [Scenario format](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md)
+- [Suites, comparisons and CI](https://github.com/eturkok/proofbeak/blob/main/docs/suites.md)
+- [Connector configuration](https://github.com/eturkok/proofbeak/blob/main/docs/capabilities.md) · [Connector SDK](https://github.com/eturkok/proofbeak/blob/main/docs/connector-sdk.md)
+- [REST and MCP](https://github.com/eturkok/proofbeak/blob/main/docs/agent-interfaces.md) · [Signed evidence](https://github.com/eturkok/proofbeak/blob/main/docs/signed-evidence.md)
+- [Evidence lifecycle](https://github.com/eturkok/proofbeak/blob/main/docs/evidence-lifecycle.md) · [Backup and recovery](https://github.com/eturkok/proofbeak/blob/main/docs/state-recovery.md)
+- [Deployment](https://github.com/eturkok/proofbeak/blob/main/docs/deployment.md) · [Qualification and limits](https://github.com/eturkok/proofbeak/blob/main/docs/stability.md)
+- [Release notes](https://github.com/eturkok/proofbeak/blob/main/CHANGELOG.md) · [Roadmap](https://github.com/eturkok/proofbeak/blob/main/docs/roadmap.md)
+
+[Contributing](https://github.com/eturkok/proofbeak/blob/main/CONTRIBUTING.md) · [Architecture](https://github.com/eturkok/proofbeak/blob/main/docs/architecture.md) · [Apache-2.0](https://github.com/eturkok/proofbeak/blob/main/LICENSE)

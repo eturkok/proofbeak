@@ -197,6 +197,18 @@ def create_server(client):
             path = path.replace("/runs/", "/suites/", 1)
         return call("POST", path + "/bundle")
 
+    @server.tool(annotations=read_only, structured_output=True)
+    def draft_trial(candidates: list[str], name: str, observer: str, arguments: dict,
+                    path: list, expected: Any, predicate: str = "eq", actions: list[dict] | None = None) -> dict[str, Any]:
+        """Create a validated scenario draft from configured operations and caller-supplied acceptance; perform no provider work."""
+        return call("POST", "/authoring/draft", {"candidates": candidates, "name": name, "observer": observer,
+            "arguments": arguments, "path": path, "expected": expected, "predicate": predicate, "actions": actions or []})
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def preview_suite(suite: dict) -> dict[str, Any]:
+        """Inspect all expanded suite cases and logical read/write operations before explicit submission."""
+        return call("POST", "/authoring/preview", {"suite": suite})
+
     return server
 
 

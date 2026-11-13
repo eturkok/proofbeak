@@ -88,7 +88,10 @@ def build_connector(name, settings, secrets=None):
         constructor, metadata = load_plugin(settings["kind"].split(":", 1)[1])
         if not isinstance(settings.get("connection"), dict) or not isinstance(settings.get("operations"), dict):
             raise ValueError("Installed plugins need an operator-owned connection and operation catalog.")
-        connector = constructor(name, settings, secrets)
+        try:
+            connector = constructor(name, settings, secrets)
+        except Exception:
+            raise ValueError("Installed connector configuration failed; review its deployment profile.") from None
         for method in ("provision", "invoke", "cleanup"):
             if not callable(getattr(connector, method, None)):
                 raise ValueError("Installed connector is missing its lifecycle contract.")

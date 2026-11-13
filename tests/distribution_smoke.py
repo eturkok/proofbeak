@@ -40,6 +40,7 @@ def inspect_artifacts(directory):
                 assert all("extra ==" in requirement for requirement in metadata.get_all("Requires-Dist", []))
                 assert set(metadata.get_all("Provides-Extra", [])) == set(project["optional-dependencies"])
                 assert "Documentation, https://github.com/eturkok/proofbeak/blob/main/docs/installation.md" in metadata.get_all("Project-URL")
+                assert {"proofbeak/web/index.html", "proofbeak/web/app.js", "proofbeak/web/style.css", "proofbeak/web/mark.svg"} <= set(names)
         else:
             with tarfile.open(path) as archive:
                 names = archive.getnames()
@@ -144,6 +145,7 @@ def installation(directory, agents):
             assert result.returncode == 0, "installed command failed: " + str(args[0])
             return result.stdout
         version = run([cli, "--version"]).strip()
+        run([cli, "studio", "--help"])
         run([cli, "example", "--output", "scenario.json"])
         run([cli, "validate", "scenario.json", "--candidate", "scenario:filesystem", "--json"])
         run([cli, "run", "scenario.json", "--candidate", "scenario:filesystem", "--key", "installed-core",
@@ -157,10 +159,28 @@ def installation(directory, agents):
         assert installed["module"] == installed["package"] == version
         assert Path(location).resolve().is_relative_to(venv.resolve())
         assert not list((work / ".proofbeak/storage").iterdir())
+        run([cli, "suite", "example", "--output", "suite.json"])
+        run([cli, "suite", "validate", "suite.json"])
+        run([cli, "suite", "run", "suite.json", "--key", "installed-suite", "--output", "suite-report.json",
+             "--html", "suite.html", "--junit", "junit.xml", "--summary", "summary.md"])
+        suite = json.loads((work / "suite-report.json").read_text())
+        assert suite["gate"] == "pass" and len(suite["entries"]) == 3
+        assert json.loads(run([cli, "gate", "suite-report.json"]))["gate"] == "pass"
+        assert json.loads(run([cli, "diff", "suite-report.json", "suite-report.json"]))["gate"] == "pass"
+        assert all((work / name).stat().st_size for name in ("suite.html", "junit.xml", "summary.md"))
         result = {"version": version, "python": sys.version.split()[0], "core": "pass", "installed_module": location,
-                  "source_checkout_imported": False, "html_export": (work / "report.html").is_file()}
+                  "source_checkout_imported": False, "html_export": (work / "report.html").is_file(), "suite_executions": 3}
         if not agents:
             return result
+        run([cli, "keys", "generate", "--private", "identity/private.json", "--public", "identity/public.json"])
+        run([cli, "bundle", "create", "suite-report.json", "--key", "identity/private.json", "--output", "suite.bundle.json"])
+        signed = json.loads(run([cli, "bundle", "verify", "suite.bundle.json", "--public-key", "identity/public.json"]))
+        assert signed["signature_valid"] and signed["content_integrity_valid"] and signed["acceptance_gate"] == "pass"
+        run([python, "-I", "-c", "from importlib.resources import files; from pathlib import Path; "
+             "from proofbeak.studio import initialize; assets=files('proofbeak').joinpath('web'); "
+             "assert all(assets.joinpath(n).is_file() for n in ('index.html','app.js','style.css','mark.svg')); "
+             "p,t=initialize(Path('studio')); assert t and p.is_file(); assert initialize(Path('studio')) == (p,t)"])
+        result.update(signed_bundle="pass", studio_setup="pass", workspace_assets="pass")
         (work / "providers.json").write_text(json.dumps({"scenario:filesystem": {}, "capability:sqlite": {"kind":"sqlite","connection":{}}}))
         initialized = run([server, "init", "--config", "server.json", "--state", "state", "--providers", "providers.json"])
         token = next(line.removeprefix("API key (shown once): ") for line in initialized.splitlines()
@@ -183,6 +203,10 @@ def installation(directory, agents):
                         assert api.poll() is None and time.monotonic() < deadline, "installed API did not become ready"
                         time.sleep(.05)
                 (work / "mcp_check.py").write_text(MCP_CHECK)
+                with urlopen(endpoint + "/ui/", timeout=5) as page:
+                    assert b"Proofbeak" in page.read()
+                with urlopen(endpoint + "/ui/assets/app.js", timeout=5) as asset:
+                    assert asset.headers.get_content_type() in {"text/javascript", "application/javascript"}
                 completed = subprocess.run([str(python), "-I", "mcp_check.py"], cwd=work,
                     env={**environment, "PROOFBEAK_API_URL": endpoint, "PROOFBEAK_API_TOKEN": token},
                     capture_output=True, text=True, timeout=45)
