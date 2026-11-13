@@ -52,8 +52,9 @@ parent watcher; cancellation, crashes and timeouts preserve cleanup intent. See
 Reports include exact test/fixture fingerprints, package/adapter/observer versions, non-secret
 provider profiles, timestamps, checks, raw observations and cleanup status. Injected transports
 and fault controls are simulations. A local filesystem trial establishes that adapter's behavior,
-not remote object-storage capability. The Google adapter has protocol tests; an actual dedicated
-Google account comparison is still pending.
+not remote object-storage capability. The primary external-service comparison now uses
+self-hosted WsgiDAV and Apache through the standard WebDAV adapter. The Google adapter has
+protocol tests; its optional live-account verification does not gate the storage case.
 
 Observation hashes detect changes to normalized raw records. They are not signatures, trusted
 attestation or provider certification. An unobserved provider version remains unknown and is
@@ -103,6 +104,7 @@ deployment mode selected by the operator. A local Python pilot requires no Kuber
 Private evidence reuse primitives are implemented, but a shared catalog remains gated on real
 demand from two separate teams. The offline pilot scorer prepares references and evaluates
 explicitly collected data; it does not run models, recruit people or establish adoption.
-The [roadmap](roadmap.md) keeps Google account verification, real developer questions,
-independent A/B evaluation and fourteen-day return observations open. No public hub, pricing,
+The [roadmap](roadmap.md) keeps real developer questions, independent A/B evaluation and
+fourteen-day return observations open. Optional Google verification is a separate integration
+choice. No public hub, pricing,
 unrestricted natural-language compiler or multi-DC expansion is justified by synthetic tests.

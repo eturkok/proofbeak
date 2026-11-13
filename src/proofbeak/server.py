@@ -12,6 +12,7 @@ from proofbeak.adapters.filesystem import FilesystemAdapter
 from proofbeak.adapters.google import GoogleCalendarAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
+from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.models import keys
 from proofbeak.executor import SubprocessExecutor, WorkerLimits
 from proofbeak.service import Tenant, TrialService
@@ -26,6 +27,10 @@ def provider_factory(name, settings, root, tenant_id):
         mode = name.split(":", 1)[1]
         SimulationAdapter(mode)
         return lambda: SimulationAdapter(mode)
+    if name.startswith("webdav:"):
+        keys(settings, {"endpoint", "username", "password_env"}, "WebDAV settings")
+        return lambda: WebDAVAdapter(name, settings["endpoint"], settings["username"],
+                                    os.environ.get(settings["password_env"], ""))
     if name == "radicale":
         keys(settings, {"endpoint", "username", "password_env"}, "Radicale settings")
         return lambda: RadicaleAdapter(settings["endpoint"], settings["username"],

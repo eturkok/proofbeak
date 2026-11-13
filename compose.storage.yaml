@@ -1,0 +1,26 @@
+# Disposable fixtures with public demo credentials and loopback-only published ports.
+services:
+  webdav-wsgidav:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.webdav-wsgi
+    ports:
+      - '127.0.0.1:8801:8080'
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700,size=64m
+      - /tmp/objects:uid=10001,gid=10001,mode=0700,size=32m
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+  webdav-apache:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.webdav-apache
+    ports:
+      - '127.0.0.1:8802:8080'
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700,size=64m
+      - /usr/local/apache2/htdocs:uid=10001,gid=10001,mode=0700,size=32m
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']

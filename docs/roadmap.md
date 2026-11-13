@@ -7,10 +7,14 @@ The product is platform-neutral. Python on Linux/macOS, containers and standard 
 are alternative deployment modes. OpenShift compatibility is optional; no specific Kubernetes
 distribution or cluster installation is required to complete the generic product or local pilot.
 
+The primary comparison is now repeated writes to the same storage key, exercised against
+self-hosted WsgiDAV and Apache WebDAV. Calendar trials remain an optional second domain.
+Google account access is not a primary development or pilot prerequisite.
+
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
-| Foundation | First 12 h | Closed fixture, CLI, real Radicale evidence, Google access check, two real user selection questions | `feat/calendar-trial-foundation` |
-| Provider comparison | Next 12 h | Google and Radicale under the same test; faults caught; cleanup reported | `feat/google-calendar-adapter` |
+| Foundation | First 12 h | Closed fixture, CLI, real self-hosted observations, two real user selection questions | `feat/storage-provider-comparison` |
+| Provider comparison | Next 12 h | WsgiDAV and Apache under the same storage test; faults caught; cleanup reported | `feat/storage-provider-comparison` |
 | Agent interfaces | Next 12 h | REST and MCP; authenticated tenant-bound runs; safe retries; two clients | `feat/agent-interfaces` |
 | Private evidence hub | Next 12 h | Context-bound validity and reuse; decision-quality experiment | `feat/private-evidence-hub` |
 | User pilot | Last 12 h | Three developers; measured decision quality, false positives, adoption, and a continuation decision | Separate scoped branches |
@@ -24,7 +28,6 @@ distribution or cluster installation is required to complete the generic product
 - [x] JSON evidence and portable HTML comparison report.
 - [x] Radicale adapter, container setup, and real-server integration test implementation.
 - [x] Run and pass the real Radicale integration in GitHub CI (November 12, 2026).
-- [ ] Verify Google test-account read/write access with the product owner.
 - [ ] Obtain two recent real service-selection questions from developers.
 
 ## Generic core increment
@@ -35,7 +38,26 @@ distribution or cluster installation is required to complete the generic product
 - [x] Run a second package against actual disposable filesystem resources.
 - [x] Preserve cleanup deserialization for the original resource ledger.
 - [x] Add a protocol-tested Google adapter for the unchanged calendar package.
-- [ ] Verify it on a dedicated real Google account and preserve cross-provider evidence.
+
+## Primary storage comparison
+
+- [x] Reuse the closed storage.put_same_key.v1 package for a repeated key/content write.
+- [x] Implement a standard WebDAV adapter with independent PROPFIND/GET observations.
+- [x] Guard writes with observed ETags and cleanup with an owned-collection marker.
+- [x] Support operator-owned WebDAV profiles through CLI, service and subprocess codecs.
+- [x] Add actual WsgiDAV/Apache fixtures and a mandatory comparison/evidence CI job.
+- [ ] Run the two-service comparison and retain its JSON/HTML evidence.
+
+The comparison checks one visible key and its content. It does not establish exact-once
+execution, hidden version-history deduplication, crash durability or concurrent-writer safety.
+See [storage comparison](storage-comparison.md).
+
+## Optional calendar backlog
+
+- [ ] Verify Google Calendar on a dedicated account if that optional integration is selected.
+
+The existing Radicale and Google adapter code/tests remain available. Live Google access is
+not required by the primary storage case or the generic product.
 
 ## Agent interface increment
 

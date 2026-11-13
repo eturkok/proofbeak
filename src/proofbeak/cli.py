@@ -11,6 +11,7 @@ from proofbeak.adapters.filesystem import FilesystemAdapter
 from proofbeak.adapters.google import GoogleCalendarAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
+from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.engine import recover_cleanup, run_trial
 from proofbeak.packs import builtins
 from proofbeak.report import render_html
@@ -34,8 +35,14 @@ def adapters_for(names):
                 os.environ.get("PROOFBEAK_RADICALE_PASSWORD", "")))
         elif name.startswith("simulation:"):
             result.append(SimulationAdapter(name.split(":", 1)[1]))
+        elif name.startswith("webdav:"):
+            alias = name.split(":", 1)[1].upper().replace("-", "_")
+            prefix = "PROOFBEAK_WEBDAV_" + alias
+            result.append(WebDAVAdapter(name, os.environ.get(prefix + "_URL", ""),
+                                       os.environ.get(prefix + "_USERNAME", "proofbeak"),
+                                       os.environ.get(prefix + "_PASSWORD", "")))
         else:
-            raise ValueError("unknown candidate; choose filesystem, radicale, google-calendar, or simulation:<mode>")
+            raise ValueError("unknown candidate; choose filesystem, webdav:<alias>, radicale, google-calendar, or simulation:<mode>")
     return result
 
 

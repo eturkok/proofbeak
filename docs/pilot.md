@@ -3,7 +3,8 @@
 The implementation is ready to collect pilot data. No real developer interviews, external
 model experiments, three-person onboarding study, or fourteen-day return observations have
 been conducted. Unit-test studies are synthetic regression fixtures and do not establish
-product value. The Google live comparison still requires a dedicated account.
+product value. The primary storage comparison uses self-hosted WsgiDAV and Apache and requires
+no external account. Live Google verification is an optional integration task.
 
 ## Collect the actual questions first
 

@@ -18,13 +18,13 @@ The local CLI has a domain-neutral execution core and registered trial packages.
 the finished pilot. Development happens on feature branches;
 changes reach `main` only through reviewed pull requests.
 
-## The first question
+## The first question: repeat a file upload
 
-> Move only the second occurrence of my four-week meeting from 10:00 to 11:00.
-> Keep all other occurrences and durations unchanged.
+> Write the same file content to the same key again.
+> Keep exactly one visible object, the same key, and the same content.
 
-The fixed fixture is December 1, 8, 15, and 22, 2026, in `Europe/Istanbul`.
-Proofbeak reads the baseline, applies the operation, then performs another read. A successful
+Proofbeak reads the baseline, repeats the write, then lists and reads the actual stored data.
+A successful
 write response is never treated as evidence that the condition passed.
 
 | Outcome | Meaning |
@@ -46,7 +46,7 @@ before a run or a resource is created.
 | Package | Acceptance condition | Available adapters |
 | --- | --- | --- |
 | `calendar.move_one.v1` | Move one weekly occurrence while preserving the other instances and durations. | Radicale; Google adapter awaiting live verification; labeled simulation controls |
-| `storage.put_same_key.v1` | Repeating a write to the same key preserves one object and the same content. | Real local filesystem reference adapter |
+| `storage.put_same_key.v1` | Repeating a write to the same key preserves one visible object and the same content. | WsgiDAV and Apache WebDAV adapter; local filesystem reference |
 
 ```bash
 PYTHONPATH=src python3 -m proofbeak packs
@@ -61,7 +61,17 @@ domain using the same worker; its result describes this local adapter and filesy
 not a remote object store such as S3. `PROOFBEAK_FILESYSTEM_ROOT` can configure the test root.
 Read [the package contract](docs/trial-packs.md) to extend the built-in registry.
 
-## Google Calendar adapter
+## Compare two self-hosted storage services
+
+The primary service comparison uses WsgiDAV and Apache WebDAV with the same storage package.
+Both run locally with disposable data and test credentials. No Google/cloud account,
+external LLM or Kubernetes cluster is required. The adapter uses standard WebDAV; these two
+servers are integration fixtures rather than mandatory product backends.
+
+See [the storage comparison walkthrough](docs/storage-comparison.md) for loopback Compose
+fixtures, CLI/REST configuration and the exact limits of this acceptance condition.
+
+## Optional Google Calendar adapter
 
 The Google adapter implements the same calendar package with a generated secondary calendar,
 independent expanded-event reads, ETag-protected instance updates, and ownership-checked
@@ -212,10 +222,10 @@ seven-day raw/thirty-day summary retention policy are implemented. See
 [evidence lifecycle and tenant removal](docs/evidence-lifecycle.md). Reuse never refreshes
 an observation's timestamp, and deleted idempotency keys cannot silently trigger a new write.
 
-1. Run the implemented Google adapter against a dedicated test account.
-2. Preserve the first actual Google/Radicale comparison under the identical fixture and package.
+1. Verify the repeated-write case against WsgiDAV and Apache and preserve independent observations.
+2. Collect actual developer selection questions and use the prepared pilot evaluation protocol.
 3. Add production identity when a remote pilot requires it; container and Helm CI checks pass.
-4. Validate real selection decisions with pilot developers before building the private hub.
+4. Keep optional calendar/cloud integrations separate from primary product exit criteria.
 
 See [architecture](docs/architecture.md), [milestones](docs/roadmap.md),
 [Google access checklist](docs/google-calendar.md), and [contribution rules](CONTRIBUTING.md).
