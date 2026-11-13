@@ -180,6 +180,7 @@ def main():
                 page.get_by_role('button',name='Visual editor',exact=True).click()
                 expect(page.locator('#suite-json')).to_be_visible()
                 results.append({'case':'incomplete_import_stays_editable_without_provider_work','passed':True})
+                assert page.locator('#announcements .toast').count() <= 1
                 assert not errors, errors
                 context.close()
                 browser.close()

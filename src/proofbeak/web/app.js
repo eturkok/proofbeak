@@ -69,7 +69,7 @@ async function submitSuite(payload,key){
   if(!response.ok)throw new ApiError(data.detail || 'Request failed.',response.status);
   return data;
 }
-function toast(message,type='success'){const node=document.createElement('div');node.className='toast '+(type==='error'?'error':'');node.textContent=message;document.querySelector('#announcements').append(node);setTimeout(()=>node.remove(),6500);}
+function toast(message,type='success'){const node=document.createElement('div');node.className='toast '+(type==='error'?'error':'');node.textContent=message;document.querySelector('#announcements').replaceChildren(node);setTimeout(()=>node.remove(),4500);}
 function download(name,value,type='application/json'){const blob=new Blob([typeof value==='string'?value:JSON.stringify(value,null,2)],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);}
 async function downloadFrom(path,name){const response=await fetch(path,{credentials:'same-origin'});if(!response.ok){const data=await response.json().catch(()=>({}));throw new ApiError(data.detail || 'Export failed.',response.status);}download(name,await response.text(),response.headers.get('content-type') || 'application/octet-stream');}
 function empty(title,text,action='new-suite',button='Create a test package'){return `<div class="empty">${icon('file')}<h3>${esc(title)}</h3><p>${esc(text)}</p>${action?`<button class="btn soft" data-action="${action}">${icon('plus')}${esc(button)}</button>`:''}</div>`;}
