@@ -5,6 +5,11 @@ closed condition and candidates; registered packages define the domain. The CLI 
 synchronously, while REST/MCP use a tenant-bound durable queue and bounded worker subprocesses.
 The local image and the filesystem package require no inference service or product account.
 
+The core and interfaces are independent of hosting vendors. Direct Python execution,
+container deployment and standard Kubernetes/Helm are alternative modes. No Kubernetes
+distribution, including OpenShift, is a prerequisite or a product/pilot exit criterion.
+Distribution-specific compatibility settings remain optional deployment profiles.
+
 ```mermaid
 flowchart TD
     A["External agent"] --> M["MCP stdio bridge"]
@@ -90,7 +95,8 @@ The chart supplies ClusterIP access and configurable default-deny egress/selecte
 Traffic enforcement depends on the cluster CNI. The dedicated Calico test exercises actual
 allow/deny transitions with positive controls; chart rendering alone is insufficient. See
 [deployment checks and their limits](deployment.md). Public TLS, remote SSO/OAuth, production
-provider allowlists and actual OpenShift SCC/storage admission still require the target setup.
+provider allowlists and host/cluster-specific storage permissions are configured for the
+deployment mode selected by the operator. A local Python pilot requires no Kubernetes cluster.
 
 ## Product gates
 

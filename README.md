@@ -6,6 +6,12 @@ Proofbeak runs a consumer's acceptance condition against candidate services and 
 observations behind each result. The agent runtime stays outside Proofbeak. No LLM, product
 account, license key, or external inference service is required by the local core.
 
+Proofbeak is platform-neutral. Run the CLI or optional REST/MCP service directly on
+Linux/macOS with Python, use the container image, or choose the standard Kubernetes/Helm
+deployment. Kubernetes and OpenShift are optional hosting choices. No OpenShift operator,
+CRD, SDK, subscription, or platform account is required. Calico is used to verify network
+policy in CI; it is not a Proofbeak runtime dependency.
+
 This is an early development version based on the
 [product and project plan](https://chatgpt.com/library?file_id=libfile_f45914e128bc819185b293e71955b439&account_id=personal).
 The local CLI has a domain-neutral execution core and registered trial packages. It is not

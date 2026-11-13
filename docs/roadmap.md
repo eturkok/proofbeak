@@ -3,6 +3,10 @@
 Based on the November 12, 2026 product plan. The sixty-hour estimate is a planning assumption,
 not recorded development time. Weekly availability and external-account access set the pace.
 
+The product is platform-neutral. Python on Linux/macOS, containers and standard Kubernetes/Helm
+are alternative deployment modes. OpenShift compatibility is optional; no specific Kubernetes
+distribution or cluster installation is required to complete the generic product or local pilot.
+
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
 | Foundation | First 12 h | Closed fixture, CLI, real Radicale evidence, Google access check, two real user selection questions | `feat/calendar-trial-foundation` |
@@ -73,11 +77,15 @@ Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven 
 - [x] Add read-only filesystem and arbitrary-UID offline container checks.
 - [x] Add chart validation and an actual kind install/REST trial to CI.
 - [x] Run the deployment checks and preserve their reports (CI run 43313710253).
-- [ ] Validate an actual OpenShift install and NetworkPolicy enforcement on the target CNI.
 - [x] Add an actual pod replacement test for persistent evidence and idempotency.
 - [x] Run the restart verification in CI (run 43316814424).
 - [x] Add actual ingress/egress probes with positive controls on Calico.
 - [x] Run the policy-enforcement probes and preserve their report (CI run 43375288148).
+
+Host/cluster-specific storage, identity, TLS and networking are validated when that deployment
+is requested. A Kubernetes deployment needs a suitable CNI for policy enforcement; direct
+Python/container use does not require Kubernetes. Distribution-specific checks are optional
+compatibility work, outside the generic product/pilot exit criteria.
 
 ## Pilot decision gates
 

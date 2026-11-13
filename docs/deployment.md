@@ -5,6 +5,21 @@ container. The agent runtime and MCP host stay outside. SQLite requires one writ
 local persistent volume; the chart rejects multiple replicas and uses a Recreate update.
 There is no HA, multi-DC replication, public ingress, registry publication, or automatic deployment.
 
+The core and optional REST/MCP service also run directly with Python on Linux/macOS, as
+described in the README and agent interface guide. Neither containers nor Kubernetes are
+required for that mode.
+
+| Mode | Required platform | Optional packaging |
+| --- | --- | --- |
+| CLI / REST / MCP | Python 3.11+ on Linux/macOS; interface extras for REST/MCP | None |
+| Container | Linux container runtime | Dockerfile and loopback Compose example |
+| Kubernetes | Standard Kubernetes APIs and suitable storage; a policy-capable CNI when enforcing NetworkPolicy | Helm chart |
+| Distribution-specific profile | Only the distribution selected by the operator | Optional values overlay |
+
+There is no OpenShift dependency or mandatory OpenShift validation gate. The provided
+OpenShift overlay is an opt-in compatibility example. The default chart uses standard
+Kubernetes resources; it does not install an OpenShift operator, Route or SCC.
+
 ## Reproducible image
 
 `Dockerfile` pins the Python 3.13 slim base by digest. `requirements-runtime.lock` pins the

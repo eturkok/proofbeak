@@ -19,6 +19,11 @@ request or response. Simulations always use the `simulation` evidence level.
 The initial worker supports Linux/macOS, Python 3.11+, and one local owner. Keep the core
 small; REST/Pydantic and MCP boundaries call the same application service.
 
+Keep the core, interfaces and default deployment platform-neutral. No Kubernetes distribution
+is required for a local Python/container pilot. Use standard Kubernetes APIs in the Helm chart;
+vendor-specific settings belong in optional profiles and must not become product exit criteria.
+Network-policy tooling selected for CI is not a mandatory runtime component.
+
 Domain-specific schema and assertion logic belongs in `packs/`, outside the common worker,
 store, and evaluator. Register a trusted package explicitly; trial input must never select an
 import path or executable code. See `docs/trial-packs.md` for the extension contract.
