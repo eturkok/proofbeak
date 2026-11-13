@@ -1,0 +1,37 @@
+name: Clean failed deployment records
+
+on:
+  push:
+    branches: [chore/failed-deployment-cleanup]
+    paths: ['.github/cleanup_failed_deployments.py', '.github/failed-deployment-cleanup-plan.json', '.github/workflows/cleanup-failed-deployments.yml']
+
+permissions:
+  contents: read
+  actions: read
+  deployments: read
+
+concurrency:
+  group: proofbeak-failed-deployment-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.repository == 'eturkok/proofbeak' && github.ref == 'refs/heads/chore/failed-deployment-cleanup'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Audit failed deployments without deleting
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/cleanup_failed_deployments.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: failed-deployment-cleanup-audit
+          path: reports/failed-deployment-cleanup.json
+          if-no-files-found: error
+          retention-days: 14
