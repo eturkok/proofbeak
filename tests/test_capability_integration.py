@@ -107,7 +107,7 @@ class CapabilityIntegrationTests(unittest.TestCase):
         adapter = CapabilityAdapter(build_connector('capability:mcp', profile))
         result = SubprocessExecutor().run(self.spec, [adapter], self.root / 'worker.sqlite3', 'mcp-worker')
         self.assertIsNone(result.reason, result.reason)
-        self.check_row(result.payload)
+        self.check_row(result.payload['report'])
         self.assertEqual(list((self.root / 'target').iterdir()), [])
 
     def test_mcp_streamable_http_target(self):

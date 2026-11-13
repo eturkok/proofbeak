@@ -100,9 +100,27 @@ async def check():
             assert fingerprint(evidence["evidence"])==row["evidence_hash"]
             retried=await call("run_trial",args)
             assert retried["run_id"]==created["run_id"]
+            v2=next(p["example_test"] for p in catalog["packages"] if p["id"]=="scenario.v2")
+            v2args={"test":v2,"candidates":["capability:sqlite"],"idempotency_key":"installed-capabilities"}
+            assert (await call("validate_trial",{"test":v2,"candidates":["capability:sqlite"]}))["valid"]
+            v2created=await call("run_trial",v2args)
+            deadline=time.monotonic()+20
+            while True:
+                v2state=await call("get_run",{"run_id":v2created["run_id"]})
+                if v2state["state"] in {"completed","interrupted","cancelled"}:break
+                assert time.monotonic()<deadline
+                await asyncio.sleep(.05)
+            assert v2state["state"]=="completed"
+            v2report=await call("compare_results",{"run_id":v2created["run_id"]})
+            v2row=v2report["candidates"][0]
+            assert v2row["verdict"]=="pass" and v2row["cleanup_status"]=="cleaned"
+            v2evidence=await call("get_evidence",{"evidence_id":v2row["evidence_ref"]})
+            assert fingerprint(v2evidence["evidence"])==v2row["evidence_hash"]
+            assert (await call("run_trial",v2args))["run_id"]==v2created["run_id"]
             print(json.dumps({"version":proofbeak.__version__,"run_id":created["run_id"],
                 "verdict":row["verdict"],"cleanup":row["cleanup_status"],"evidence_hash":row["evidence_hash"],
-                "installed_module":str(Path(proofbeak.__file__).resolve()),"mcp":"actual_stdio","worker":report["runner"]["backend"]}))
+                "installed_module":str(Path(proofbeak.__file__).resolve()),"mcp":"actual_stdio","worker":report["runner"]["backend"],
+                "scenario_v2":{"verdict":v2row["verdict"],"cleanup":v2row["cleanup_status"],"evidence_hash":v2row["evidence_hash"]}}))
 asyncio.run(check())
 '''
 
@@ -116,7 +134,7 @@ def installation(directory, agents):
         subprocess.run([sys.executable, "-m", "venv", str(venv)], check=True, env=environment)
         python, cli, server = (venv / "bin" / name for name in ("python", "proofbeak", "proofbeak-server"))
         install = [str(python), "-m", "pip", "install", "--disable-pip-version-check"]
-        install += [str(wheel) + "[agents,calendar]"] if agents else ["--no-index", "--no-deps", str(wheel)]
+        install += [str(wheel) + "[agents,calendar,connectors]"] if agents else ["--no-index", "--no-deps", str(wheel)]
         subprocess.run(install, check=True, env=environment, stdout=subprocess.DEVNULL)
         subprocess.run([str(python), "-m", "pip", "check"], check=True, env=environment)
         work = root / "work"
@@ -143,7 +161,7 @@ def installation(directory, agents):
                   "source_checkout_imported": False, "html_export": (work / "report.html").is_file()}
         if not agents:
             return result
-        (work / "providers.json").write_text(json.dumps({"scenario:filesystem": {}}))
+        (work / "providers.json").write_text(json.dumps({"scenario:filesystem": {}, "capability:sqlite": {"kind":"sqlite","connection":{}}}))
         initialized = run([server, "init", "--config", "server.json", "--state", "state", "--providers", "providers.json"])
         token = next(line.removeprefix("API key (shown once): ") for line in initialized.splitlines()
                      if line.startswith("API key (shown once): "))

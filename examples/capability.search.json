@@ -1,0 +1,36 @@
+{
+  "id": "scenario.v2",
+  "name": "Relevant documents appear in the first results",
+  "fixture": {},
+  "setup": [],
+  "steps": [],
+  "observe": [
+    {
+      "id": "ranking",
+      "op": "catalog.search",
+      "args": {
+        "q": "vector search"
+      }
+    }
+  ],
+  "require": [],
+  "expect": [
+    {
+      "name": "recall",
+      "actual": [
+        "after",
+        "ranking",
+        "matches"
+      ],
+      "op": "recall_at_k",
+      "value": {
+        "relevant": [
+          "expected-document-id"
+        ],
+        "id_field": "id",
+        "k": 5,
+        "min_recall": 1
+      }
+    }
+  ]
+}

@@ -41,9 +41,12 @@ class SQLConnector(Connector):
             if binding.get("action") in {"put", "get", "delete", "list", "rollback"}:
                 if set(binding) != {"action"} or definition["read_only"] != (binding["action"] in {"get", "list"}):
                     raise ValueError("invalid SQL action declaration")
-            elif set(binding) != {"statement"} or not isinstance(binding["statement"], str) or \
-                    "{table}" not in binding["statement"] or ";" in binding["statement"] or len(binding["statement"]) > 4096:
-                raise ValueError("named SQL statements require the isolated {table} and one statement")
+            else:
+                statements = binding.get("statements", [binding.get("statement")])
+                if set(binding) - {"statement", "statements", "rollback"} or ("statement" in binding and "statements" in binding) or \
+                        not isinstance(statements, list) or not 1 <= len(statements) <= 8 or type(binding.get("rollback", False)) is not bool or \
+                        any(not isinstance(s, str) or "{table}" not in s or ";" in s or len(s) > 4096 for s in statements):
+                    raise ValueError("named SQL transactions need one to eight scoped parameterized statements")
 
     def _file(self, resource):
         scope = self.scope(resource)
@@ -153,16 +156,18 @@ class SQLConnector(Connector):
                         raise ProviderError("observation_budget_exceeded")
                     result = {"rows": [dict(row) for row in rows], "count": len(rows)}
                 else:
-                    statement = binding["statement"].replace("{table}", "records")
-                    if not self.sqlite:
-                        statement = re.sub(r":([A-Za-z][A-Za-z0-9_]*)", r"%(\1)s", statement)
-                    cursor = db.execute(statement, arguments)
-                    rows = cursor.fetchmany(257) if cursor.description else []
-                    if len(rows) > 256:
-                        raise ProviderError("observation_budget_exceeded")
+                    rows = []
+                    for statement in binding.get("statements", [binding.get("statement")]):
+                        statement = statement.replace("{table}", "records")
+                        if not self.sqlite:
+                            statement = re.sub(r":([A-Za-z][A-Za-z0-9_]*)", r"%(\1)s", statement)
+                        cursor = db.execute(statement, arguments)
+                        rows = cursor.fetchmany(257) if cursor.description else []
+                        if len(rows) > 256:
+                            raise ProviderError("observation_budget_exceeded")
                     result = {"rows": [dict(row) for row in rows], "count": len(rows)}
                 canonical(result)
-                if action == "rollback":
+                if action == "rollback" or binding.get("rollback"):
                     db.rollback()
                 else:
                     db.commit()

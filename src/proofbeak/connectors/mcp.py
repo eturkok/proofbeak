@@ -73,9 +73,14 @@ class MCPConnector(ScopedConnector):
                             env={"PATH": os.defpath, "PYTHONUTF8": "1", **self.secrets})
                         streams = await stack.enter_async_context(stdio_client(params, errlog=log))
                     else:
+                        import httpx
                         from mcp.client.streamable_http import streamablehttp_client
+                        def http_client_factory(headers=None, timeout=None, auth=None):
+                            return httpx.AsyncClient(headers=headers, timeout=timeout, auth=auth,
+                                                     follow_redirects=False, trust_env=False)
                         streams = await stack.enter_async_context(streamablehttp_client(c["url"], headers=self.secrets,
-                            timeout=timedelta(seconds=5), sse_read_timeout=timedelta(seconds=5)))
+                            timeout=timedelta(seconds=5), sse_read_timeout=timedelta(seconds=5),
+                            httpx_client_factory=http_client_factory))
                     self.session = await stack.enter_async_context(ClientSession(streams[0], streams[1],
                                                                   read_timeout_seconds=timedelta(seconds=5)))
                     await self.session.initialize()

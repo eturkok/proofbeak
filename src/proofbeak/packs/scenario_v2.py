@@ -1,5 +1,6 @@
 """Protocol-neutral scenarios over operator-registered capabilities."""
 
+import json
 from dataclasses import dataclass
 
 from proofbeak.adapters.base import ProviderError
@@ -27,7 +28,11 @@ def evaluate(definitions, context, source, observed_at):
     for definition in definitions:
         op = definition["op"]
         if op not in {"schema", "set_eq", "recall_at_k"}:
-            result = conditions([definition], context, source, observed_at)
+            try:
+                prepared = {**definition, "value": resolve_tree(definition["value"], context)}
+            except ProviderError:
+                prepared = {**definition, "value": {"ref": ["unavailable_expected_value"]}}
+            result = conditions([prepared], context, source, observed_at)
             checks.extend(result["checks"])
             unavailable |= result["verdict"] == "inconclusive"
             continue
@@ -50,8 +55,12 @@ def evaluate(definitions, context, source, observed_at):
                 passed = metric >= expected["min_recall"]
         except (ProviderError, ValueError, KeyError, TypeError):
             available, unavailable = False, True
-        checks.append({"field": definition["name"], "operator": op, "expected": expected,
-                       "observed": actual, "available": available, "passed": passed,
+        def display(value):
+            from proofbeak.models import fingerprint
+            size = len(canonical(value).encode())
+            return {"value_hash": fingerprint(value), "bytes": size, "see_evidence": True} if size > 1024 else value
+        checks.append({"field": definition["name"], "operator": op, "expected": display(expected),
+                       "observed": display(actual), "available": available, "passed": passed,
                        "path": definition["actual"], "source": source, "observed_at": observed_at,
                        **({"measured_recall": metric} if metric is not None else {})})
     return {"verdict": "inconclusive" if unavailable else ("pass" if checks and all(c["passed"] for c in checks) else "fail"),
@@ -107,6 +116,7 @@ class CapabilityPack(ScenarioPack):
     def parse(self, spec):
         if len(canonical(spec).encode()) > 65536:
             raise ValueError("scenario exceeds 64 KiB")
+        spec = json.loads(canonical(spec))
         errors = list(validator(self.schema()).iter_errors(spec))
         if errors:
             raise TrialValidationError("invalid scenario.v2 definition", code="invalid_scenario", path=list(errors[0].absolute_path))
@@ -146,11 +156,20 @@ class CapabilityPack(ScenarioPack):
                 if condition["name"] in seen or condition["actual"][1] not in known[root]:
                     raise ValueError("duplicate condition or unknown observation")
                 seen.add(condition["name"])
+                if any(not ((isinstance(p, str) and 1 <= len(p) <= 128) or (type(p) is int and 0 <= p <= 255))
+                       for p in condition["actual"]):
+                    raise ValueError("invalid observation path")
                 references(condition["value"], {"fixture", "before"} | ({"after"} if phase == "expect" else set()))
                 if condition["op"] == "schema":
-                    validator(resolve_tree(condition["value"], {"fixture": spec["fixture"]}))
+                    try:
+                        validator(resolve_tree(condition["value"], {"fixture": spec["fixture"]}))
+                    except ProviderError:
+                        raise ValueError("schema predicates must be literal or fixture-defined") from None
                 if condition["op"] == "recall_at_k":
-                    v = resolve_tree(condition["value"], {"fixture": spec["fixture"]})
+                    try:
+                        v = resolve_tree(condition["value"], {"fixture": spec["fixture"]})
+                    except ProviderError:
+                        raise ValueError("ranking references must be fixture-defined") from None
                     if not isinstance(v, dict) or set(v) != {"relevant", "id_field", "k", "min_recall"} or \
                             not isinstance(v["relevant"], list) or not v["relevant"] or not isinstance(v["id_field"], str) or \
                             type(v["k"]) is not int or not 1 <= v["k"] <= 64 or type(v["min_recall"]) not in {int, float} or \

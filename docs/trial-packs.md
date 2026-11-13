@@ -5,6 +5,12 @@ common worker, explicit domain packages, and compatible provider adapters.
 
 ## Users compose scenarios; developers extend capabilities
 
+For registered REST, MCP, SQL, stream, search and model operations, use
+[`scenario.v2` and capability connectors](capabilities.md). Connectors publish JSON input/output
+schemas and read-only policy, while callers supply their own acceptance definitions. The
+common capability adapter handles lifecycle, evidence and bounded final-observation polling.
+`scenario.v1` below retains its original operation vocabulary for compatibility.
+
 For a new acceptance condition, start with [user-defined scenarios](scenarios.md), not a new
 Python package. `scenario.v1` is a reusable definition format: callers supply their own
 preparation, operations, independent observations and conditions. The example files are

@@ -1,0 +1,423 @@
+{
+  "capability:sqlite": {
+    "kind": "sqlite",
+    "connection": {}
+  },
+  "capability:postgres": {
+    "kind": "postgres",
+    "connection": {
+      "secret_env": {
+        "dsn": "PROOFBEAK_POSTGRES_DSN"
+      }
+    }
+  },
+  "capability:rest": {
+    "kind": "rest",
+    "connection": {
+      "endpoint": "https://api.example.test"
+    },
+    "operations": {
+      "scope.create": {
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": false,
+        "binding": {
+          "method": "PUT",
+          "path": "/scopes/{scope}",
+          "body": {
+            "owner": {
+              "scope": true
+            }
+          }
+        }
+      },
+      "scope.inspect": {
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": true,
+        "binding": {
+          "method": "GET",
+          "path": "/scopes/{scope}",
+          "statuses": [
+            200,
+            404
+          ],
+          "project": {
+            "exists": [
+              "exists"
+            ],
+            "owner": [
+              "json",
+              "owner"
+            ]
+          }
+        }
+      },
+      "scope.destroy": {
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": false,
+        "binding": {
+          "method": "DELETE",
+          "path": "/scopes/{scope}",
+          "statuses": [
+            204,
+            404
+          ]
+        }
+      },
+      "record.put": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": false,
+        "binding": {
+          "method": "PUT",
+          "path": "/scopes/{scope}/items/{key}",
+          "body": {
+            "value": {
+              "arg": "value"
+            }
+          }
+        }
+      },
+      "record.get": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "key"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": true,
+        "binding": {
+          "method": "GET",
+          "path": "/scopes/{scope}/items/{key}",
+          "statuses": [
+            200,
+            404
+          ],
+          "project": {
+            "exists": [
+              "exists"
+            ],
+            "value": [
+              "json",
+              "value"
+            ]
+          }
+        }
+      }
+    },
+    "lifecycle": {
+      "create": "scope.create",
+      "inspect": "scope.inspect",
+      "destroy": "scope.destroy"
+    }
+  },
+  "capability:mcp": {
+    "kind": "mcp",
+    "connection": {
+      "transport": "stdio",
+      "command": "/absolute/path/to/python",
+      "args": [
+        "/absolute/path/to/mcp_target.py",
+        "/absolute/path/to/test-data"
+      ]
+    },
+    "operations": {
+      "scope.create": {
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": false,
+        "binding": {
+          "tool": "scope_create",
+          "arguments": {
+            "scope": {
+              "scope": true
+            }
+          }
+        }
+      },
+      "scope.inspect": {
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": true,
+        "binding": {
+          "tool": "scope_inspect",
+          "arguments": {
+            "scope": {
+              "scope": true
+            }
+          }
+        }
+      },
+      "scope.destroy": {
+        "input_schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": false,
+        "binding": {
+          "tool": "scope_destroy",
+          "arguments": {
+            "scope": {
+              "scope": true
+            }
+          }
+        }
+      },
+      "record.put": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "key",
+            "value"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": false,
+        "binding": {
+          "tool": "record_put",
+          "arguments": {
+            "scope": {
+              "scope": true
+            },
+            "key": {
+              "arg": "key"
+            },
+            "value": {
+              "arg": "value"
+            }
+          }
+        }
+      },
+      "record.get": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            }
+          },
+          "required": [
+            "key"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": true,
+        "binding": {
+          "tool": "record_get",
+          "arguments": {
+            "scope": {
+              "scope": true
+            },
+            "key": {
+              "arg": "key"
+            }
+          }
+        }
+      }
+    },
+    "lifecycle": {
+      "create": "scope.create",
+      "inspect": "scope.inspect",
+      "destroy": "scope.destroy"
+    }
+  },
+  "capability:streams": {
+    "kind": "redis",
+    "connection": {
+      "host": "127.0.0.1",
+      "port": 6379
+    },
+    "channels": [
+      "events",
+      "results"
+    ]
+  },
+  "capability:search": {
+    "kind": "search",
+    "connection": {
+      "endpoint": "https://search.example.test"
+    },
+    "operations": {
+      "catalog.search": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "q": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "q"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": true,
+        "binding": {
+          "method": "GET",
+          "path": "/search",
+          "query": {
+            "q": {
+              "arg": "q"
+            }
+          },
+          "project": {
+            "matches": [
+              "json",
+              "matches"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "capability:model": {
+    "kind": "model",
+    "connection": {
+      "endpoint": "https://inference.example.test",
+      "secret_env": {
+        "Authorization": "PROOFBEAK_MODEL_AUTHORIZATION"
+      }
+    },
+    "operations": {
+      "model.generate": {
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "prompt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "prompt"
+          ],
+          "additionalProperties": false
+        },
+        "output_schema": {
+          "type": "object"
+        },
+        "read_only": true,
+        "binding": {
+          "method": "POST",
+          "path": "/v1/chat/completions",
+          "body": {
+            "model": "operator-selected-model",
+            "messages": [
+              {
+                "role": "user",
+                "content": {
+                  "arg": "prompt"
+                }
+              }
+            ]
+          },
+          "project": {
+            "answer": [
+              "json",
+              "choices",
+              0,
+              "message",
+              "content"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

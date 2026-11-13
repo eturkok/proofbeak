@@ -9,10 +9,10 @@ from proofbeak.connectors import Connector
 from proofbeak.models import canonical
 
 
-def stream_operations():
+def stream_operations(channels):
     result = {}
     for action in ("publish", "read"):
-        properties = {"channel": {"enum": ["events", "results"]}}
+        properties = {"channel": {"enum": channels}}
         if action == "publish":
             properties["payload"] = {"type": "object"}
         result["stream." + action] = {"input_schema": {"type": "object", "properties": properties,
@@ -23,10 +23,15 @@ def stream_operations():
 
 class RedisConnector(Connector):
     def __init__(self, name, settings, secrets=None):
-        settings = {**settings, "operations": settings.get("operations", stream_operations())}
+        self.channels = settings.get("channels", ["events", "results"])
+        import re
+        if not isinstance(self.channels, list) or not 1 <= len(self.channels) <= 16 or len(set(self.channels)) != len(self.channels) or \
+                any(not isinstance(c, str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", c) or c == "owner" for c in self.channels):
+            raise ValueError("configure one to 16 distinct stream channel names")
+        settings = {**settings, "operations": settings.get("operations", stream_operations(self.channels))}
         super().__init__(name, settings, secrets)
         connection = settings["connection"]
-        if set(settings) - {"kind", "connection", "operations", "provider_version"} or \
+        if set(settings) - {"kind", "connection", "operations", "provider_version", "channels"} or \
                 set(connection) - {"host", "port", "tls", "secret_env"}:
             raise ValueError("unknown Redis connector setting")
         self.host, self.port = connection.get("host", "127.0.0.1"), connection.get("port", 6379)
@@ -42,6 +47,7 @@ class RedisConnector(Connector):
 
     def command(self, *arguments):
         sock = None
+        stream = None
         try:
             sock = socket.create_connection((self.host, self.port), timeout=3)
             if self.tls:
@@ -90,6 +96,8 @@ class RedisConnector(Connector):
         except (OSError, ValueError, UnicodeError):
             raise ProviderError("write_outcome_unknown" if arguments[0] in {"SET", "XADD", "DEL", "EVAL"} else "observation_unavailable") from None
         finally:
+            if stream:
+                stream.close()
             if sock:
                 sock.close()
 
@@ -106,7 +114,7 @@ class RedisConnector(Connector):
 
     def cleanup(self, resource):
         prefix = self._prefix(resource)
-        keys = [prefix + ":" + suffix for suffix in ("events", "results", "owner")]
+        keys = [prefix + ":" + suffix for suffix in [*self.channels, "owner"]]
         if not self.command("EXISTS", *keys):
             return
         removed = self.command("EVAL", "if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('DEL',unpack(KEYS)) else return -1 end",
@@ -119,7 +127,7 @@ class RedisConnector(Connector):
     def invoke(self, resource, operation, arguments):
         definition = self.catalog.validate(operation, arguments)
         self._owned(resource)
-        if arguments.get("channel") not in {"events", "results"}:
+        if arguments.get("channel") not in self.channels:
             raise ProviderError("scenario_arguments_invalid")
         key = self._prefix(resource) + ":" + arguments["channel"]
         if definition["binding"]["action"] == "publish":

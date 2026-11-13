@@ -155,6 +155,43 @@ class CapabilityTests(unittest.TestCase):
         self.assertFalse(self.backend._file(resource).exists())
         self.assertEqual(recover_cleanup(self.store, [self.adapter]), [])
 
+    def test_multi_statement_transaction_rollback_leaves_independent_reads_unchanged(self):
+        settings = copy.deepcopy(self.backend.settings)
+        definition = copy.deepcopy(settings['operations']['record.put'])
+        definition['binding'] = {'statements': [
+            'INSERT INTO {table}(key,value) VALUES (:key,:value)',
+            "UPDATE {table} SET value='changed' WHERE key=:key"], 'rollback': True}
+        settings['operations']['record.batch'] = definition
+        backend = build_connector('capability:transactions', settings)
+        resource = backend.resource('d' * 32)
+        backend.provision(resource, None)
+        self.addCleanup(lambda: backend.cleanup(resource))
+        backend.invoke(resource, 'record.batch', {'key': 'probe', 'value': 'discarded'})
+        self.assertFalse(backend.invoke(resource, 'record.get', {'key': 'probe'})['exists'])
+
+    def test_remote_credentials_stay_outside_public_profile_and_scope_is_not_user_input(self):
+        from capability_fixtures import rest_profile
+        settings = rest_profile('https://example.test')
+        settings['connection']['secret_env'] = {'Authorization': 'PROVIDER_AUTHORIZATION'}
+        adapter = CapabilityAdapter(build_connector('capability:auth', settings, {'Authorization': 'Bearer private-value'}))
+        encoded = encode_adapter(adapter)
+        self.assertNotIn('private-value', str(adapter.profile))
+        self.assertEqual(encoded['options']['secrets']['Authorization'], 'Bearer private-value')
+        self.spec['steps'][0]['args']['scope'] = 'foreign'
+        with self.assertRaises(ValueError):
+            CapabilityPack().parse(self.spec)
+
+    def test_mutating_rest_profiles_require_lifecycle_and_owned_paths(self):
+        from capability_fixtures import rest_profile
+        settings = rest_profile('https://example.test')
+        del settings['lifecycle']
+        with self.assertRaises(ValueError):
+            build_connector('capability:unsafe', settings)
+        settings = rest_profile('https://example.test')
+        settings['operations']['record.put']['binding']['path'] = '/items/{key}'
+        with self.assertRaises(ValueError):
+            build_connector('capability:unsafe', settings)
+
     def test_discovery_is_schema_driven_and_has_no_provider_access(self):
         with patch.object(self.backend, 'invoke', side_effect=AssertionError('no I/O')):
             operations = self.adapter.describe_operations()

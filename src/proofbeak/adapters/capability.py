@@ -39,6 +39,10 @@ class CapabilityAdapter:
             for index, step in enumerate(getattr(trial, phase)):
                 with located([phase, index]):
                     definition = self.backend.catalog.get(step["op"])
+                    schema = definition["input_schema"]
+                    if set(step["args"]) - set(schema.get("properties", {})) or \
+                            set(schema.get("required", [])) - set(step["args"]):
+                        raise ValueError("arguments do not match the registered operation fields")
                     if phase == "observe" and not definition["read_only"]:
                         raise ValueError("observations require a read-only capability")
                     # Resolve fixture references now. Captured values are checked immediately before I/O.
@@ -123,6 +127,8 @@ class CapabilityAdapter:
                 polls.append({"observed_at": now, "observations_hash": fingerprint(values),
                               "verdict": result["verdict"] if result else "inconclusive", "error": self.error})
                 if not watch or consecutive >= watch.get("stable_samples", 1):
+                    if watch and time.monotonic() > deadline:
+                        self.error = "observation_deadline_exceeded"
                     break
                 remaining = deadline - time.monotonic()
                 if remaining <= 0 or self.calls >= 128 or self.bytes >= 262144:
