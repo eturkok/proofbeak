@@ -13,6 +13,7 @@ from proofbeak.adapters.google import GoogleCalendarAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
+from proofbeak.adapters.scenario import JSONReadConnector, ScenarioAdapter
 from proofbeak.engine import recover_cleanup, run_trial
 from proofbeak.packs import builtins
 from proofbeak.report import render_html, write_private
@@ -22,7 +23,21 @@ from proofbeak.store import IdempotencyConflict, Store
 def adapters_for(names):
     result = []
     for name in names:
-        if name == "filesystem":
+        if name.startswith("scenario:"):
+            inner = name[len("scenario:"):]
+            if inner.startswith("http:"):
+                alias = inner.split(":", 1)[1].upper().replace("-", "_")
+                prefix = "PROOFBEAK_HTTP_" + alias
+                routes = os.environ.get(prefix + "_ROUTES", "{}")
+                if len(routes.encode()) > 16384:
+                    raise ValueError("oversized HTTP route profile")
+                backend = JSONReadConnector(inner, os.environ.get(prefix + "_URL", ""), json.loads(routes))
+            elif inner == "filesystem" or inner.startswith("webdav:"):
+                backend = adapters_for([inner])[0]
+            else:
+                raise ValueError("unregistered scenario connector")
+            result.append(ScenarioAdapter(backend))
+        elif name == "filesystem":
             result.append(FilesystemAdapter(os.environ.get(
                 "PROOFBEAK_FILESYSTEM_ROOT", ".proofbeak/storage")))
         elif name == "google-calendar":
@@ -55,6 +70,7 @@ def main(argv=None):
     commands.add_parser("google-preflight", help="read-only Google test-account identity check")
     validate = commands.add_parser("validate", help="validate a closed trial definition")
     validate.add_argument("spec", type=Path)
+    validate.add_argument("--candidate", action="append", help="also validate configured candidate operations without execution")
     run = commands.add_parser("run", help="run a local acceptance trial")
     run.add_argument("spec", type=Path)
     run.add_argument("--candidate", action="append", required=True)
@@ -91,6 +107,12 @@ def main(argv=None):
         spec = json.loads(args.spec.read_text())
         pack, _ = builtins().prepare(spec)
         if args.command == "validate":
+            if args.candidate:
+                for adapter in adapters_for(args.candidate):
+                    if pack.id not in adapter.supported_trials:
+                        raise ValueError("candidate does not support trial package")
+                    if hasattr(pack, "validate_adapter"):
+                        pack.validate_adapter(pack.parse(spec), adapter)
             print(f"Valid: {pack.id} (package {pack.version})")
             return 0
         if args.html and args.output.resolve() == args.html.resolve():

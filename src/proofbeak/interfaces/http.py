@@ -90,6 +90,10 @@ def create_app(service: TrialService, background=True):
         result = service.submit(owner, body.test, body.candidates, key)
         return JSONResponse(result, status_code=202, headers={"Location": f'/runs/{result["run_id"]}'})
 
+    @app.post("/trials/validate")
+    def validate_trial(body: RunRequest, owner: str = Depends(tenant)):
+        return service.validate_trial(owner, body.test, body.candidates)
+
     @app.get("/runs")
     def history(owner: str = Depends(tenant), limit: int = Query(default=25, ge=1, le=100), before: str | None = None):
         return service.history(owner, limit, before)

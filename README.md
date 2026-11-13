@@ -5,13 +5,17 @@
 [English](README.md) · [Türkçe](README.tr.md)
 
 Proofbeak is a self-hosted test-and-evidence service for developers and AI agents. You give
-it a supported requirement, test data and candidate services. It runs the same small trial
+it your own scenario, test data and candidate services. It runs the same small trial
 against each candidate, reads what actually happened, and returns a result with the
 observations behind it.
 
 Use it when deciding whether a service or agent tool satisfies a specific behavior your
 application depends on. Your agent can call Proofbeak through MCP or REST; you can also run
 trials directly from the command line.
+
+Define the preparation, actions, independent reads and expected results in JSON using the
+configured connectors' operations. **A new condition needs a new definition, not a new
+Python case in the product.** Start with [your own scenario](docs/scenarios.md).
 
 ## A concrete example
 
@@ -42,9 +46,9 @@ See the [complete storage example](docs/storage-comparison.md).
 
 | Input | Example |
 | --- | --- |
-| A condition from a registered trial package | Repeat a write and preserve one object, its key and content |
+| Your scenario and acceptance conditions | Delete one object while preserving another, or repeat/update a write |
 | Small, disposable test data | `probe.txt` containing a chosen string |
-| Configured candidate IDs | `webdav:wsgidav`, `webdav:apache` |
+| Configured candidate IDs | `scenario:webdav:wsgidav`, `scenario:webdav:apache` |
 
 Each candidate receives its own result:
 
@@ -70,7 +74,8 @@ measured observations; the developer or external agent makes the final choice.
 ## How an agent uses it
 
 The operator configures allowed test services and keeps provider credentials on the server.
-The agent then discovers available trial packages, submits a condition and candidate IDs,
+The agent then discovers connector capabilities and the scenario schema, validates its
+definition without contacting providers, submits the scenario and candidate IDs,
 waits for completion, and reads the comparison and evidence through MCP or REST.
 
 A retry with the same request and key retrieves the original run. Eligible historical evidence
@@ -82,18 +87,29 @@ flow, including discovery, execution, evidence verification and JSON/HTML export
 
 ## What works today?
 
-Version **0.4.0** includes two registered trial packages:
+Version **0.5.0** supports user-defined scenarios over these reusable capabilities:
+
+| Capability | Candidates | What you define |
+| --- | --- | --- |
+| Object put/get/list/delete | Local filesystem; WsgiDAV and Apache through WebDAV | Preparation, action sequence and conditions on independently read object state |
+| Named HTTP GET with JSON field mapping | Operator-configured public JSON services | Which configured routes to read and conditions on actual response fields |
+
+Use `scenario.v1` for every definition; it identifies the format, not a particular case.
+The bundled scenarios are editable examples. A new protocol or operation needs a trusted
+connector; new combinations of available operations and conditions need only JSON.
+The initial HTTP connector is read-only and has no authentication/header configuration.
+See [scenario authoring, limits and two-service walkthrough](docs/scenarios.md).
+
+Earlier fixed trial packages remain compatible:
 
 | Package | Behavior checked | Available adapters |
 | --- | --- | --- |
 | `storage.put_same_key.v1` | Repeat a write while preserving object count, key and content | Local filesystem reference; WsgiDAV and Apache through WebDAV |
 | `calendar.move_one.v1` | Move one recurring event occurrence while preserving the others and their durations | Real Radicale integration; optional Google adapter with protocol tests, awaiting live verification |
 
-Storage is the primary example. The engine, evidence lifecycle and agent interfaces are shared
-across packages. Supporting a new condition or service requires a developer to register and
-validate a trusted trial package and/or adapter. Requests use closed JSON definitions;
+The engine, evidence lifecycle and agent interfaces are shared. Requests use bounded JSON;
 this release does not compile arbitrary natural-language requirements or run arbitrary code.
-See [how to add a package or adapter](docs/trial-packs.md).
+See [developer extension contracts](docs/trial-packs.md) for new connector capabilities.
 
 ## Try it locally
 
@@ -101,8 +117,10 @@ From a checkout, Python 3.11+ on Linux or macOS is sufficient for a real filesys
 This example needs no third-party Python packages, cloud account, model service or Docker:
 
 ```bash
-PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
-  --candidate filesystem --key first-trial \
+PYTHONPATH=src python3 -m proofbeak validate examples/scenario.delete_and_preserve.json \
+  --candidate scenario:filesystem
+PYTHONPATH=src python3 -m proofbeak run examples/scenario.delete_and_preserve.json \
+  --candidate scenario:filesystem --key first-trial \
   --output reports/first-trial.json --html reports/first-trial.html
 ```
 
@@ -110,11 +128,11 @@ Open `reports/first-trial.html` to inspect the condition, actual observations an
 For a successful run, the CLI includes:
 
 ```text
-filesystem: pass (conditions_met); cleanup=cleaned
+scenario:filesystem: pass (conditions_met); cleanup=cleaned
 ```
 
-This tests the local filesystem adapter. To compare two actual HTTP services, follow the
-[WebDAV setup](docs/storage-comparison.md) or [MCP walkthrough](docs/mcp-walkthrough.md).
+Copy and edit the JSON to try your own condition, using a new key. To compare two actual
+services with that definition, follow the [scenario walkthrough](docs/scenarios.md).
 Use dedicated test accounts/scopes for external providers. The examples use synthetic data.
 
 ## Deployment and release scope
@@ -138,11 +156,12 @@ See [stability scope and results](docs/stability.md) and [release notes](CHANGEL
 
 | I want to… | Read |
 | --- | --- |
+| Define my own condition without adding Python code | [User-defined scenarios](docs/scenarios.md) |
 | Compare the two storage services | [Storage trial](docs/storage-comparison.md) |
 | Connect an agent and run the complete MCP flow | [MCP walkthrough](docs/mcp-walkthrough.md) |
 | Use REST, configure tenants or inspect tool contracts | [Agent interfaces](docs/agent-interfaces.md) |
 | Run CLI fault controls, the calendar example or cleanup | [CLI guide](docs/cli-guide.md) |
-| Add a supported condition or provider | [Trial packages and adapters](docs/trial-packs.md) |
+| Implement a new connector or protocol | [Trial packages and adapters](docs/trial-packs.md) |
 | Understand evidence reuse, expiry and deletion | [Evidence lifecycle](docs/evidence-lifecycle.md) |
 | Check configuration, upgrade, back up or restore | [State recovery](docs/state-recovery.md) |
 | Deploy a container or Helm chart | [Deployment](docs/deployment.md) |

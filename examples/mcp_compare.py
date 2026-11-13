@@ -78,6 +78,11 @@ async def compare(args):
                         if not capabilities.get("configured") \
                                 or spec["id"] not in capabilities.get("supported_trials", []):
                             raise ClientError("candidate_not_configured_or_compatible")
+                    tools = await session.list_tools()
+                    if any(tool.name == "validate_trial" for tool in tools.tools):
+                        validation = await call("validate_trial", {"test": spec, "candidates": args.candidate})
+                        if not validation.get("valid"):
+                            raise ClientError("invalid_trial_definition")
                     created = await call("run_trial", {
                         "test": spec, "candidates": args.candidate, "idempotency_key": args.key})
                     run_id = created["run_id"]

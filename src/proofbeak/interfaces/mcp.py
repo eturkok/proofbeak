@@ -92,6 +92,11 @@ def create_server(client):
         return call("POST", "/runs", {"test": test, "candidates": candidates}, key=idempotency_key)
 
     @server.tool(annotations=read_only, structured_output=True)
+    def validate_trial(test: dict, candidates: list[str]) -> dict[str, Any]:
+        """Validate a user-defined trial and connector capabilities; create no job or provider resource."""
+        return call("POST", "/trials/validate", {"test": test, "candidates": candidates})
+
+    @server.tool(annotations=read_only, structured_output=True)
     def get_run(run_id: str) -> dict[str, Any]:
         """Read the tenant-owned run's progress and separate candidate verdicts."""
         return call("GET", client.run_path(run_id))

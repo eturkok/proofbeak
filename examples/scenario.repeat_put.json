@@ -1,0 +1,142 @@
+{
+  "id": "scenario.v1",
+  "name": "Repeat the same write twice and preserve the observed state",
+  "fixture": {
+    "key": "probe.txt",
+    "content": "synthetic probe",
+    "other": "keep.txt"
+  },
+  "setup": [
+    {
+      "id": "seed",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "repeat_one",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    },
+    {
+      "id": "repeat_two",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "target",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "initial_count",
+      "actual": [
+        "before",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    }
+  ],
+  "expect": [
+    {
+      "name": "one_object",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    },
+    {
+      "name": "same_content",
+      "actual": [
+        "after",
+        "target",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "target",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "same_keys",
+      "actual": [
+        "after",
+        "listing",
+        "keys"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "listing",
+          "keys"
+        ]
+      }
+    }
+  ]
+}

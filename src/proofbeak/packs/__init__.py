@@ -32,6 +32,7 @@ class PackRegistry:
 
     def describe(self):
         return [{"id": p.id, "version": p.version,
+                 **({"input_schema": p.schema()} if hasattr(p, "schema") else {}),
                  **({"description": p.description, "example_test": p.example()} if hasattr(p, "example") else {})}
                 for p in self.packs.values()]
 
@@ -39,5 +40,6 @@ class PackRegistry:
 def builtins() -> PackRegistry:
     from proofbeak.packs.calendar import CalendarPack
     from proofbeak.packs.storage import StoragePack
+    from proofbeak.packs.scenario import ScenarioPack
 
-    return PackRegistry([CalendarPack(), StoragePack()])
+    return PackRegistry([CalendarPack(), StoragePack(), ScenarioPack()])

@@ -1,0 +1,149 @@
+{
+  "id": "scenario.v1",
+  "name": "Replace one object without changing its neighbour",
+  "fixture": {
+    "key": "probe.txt",
+    "content": "synthetic probe",
+    "other": "keep.txt",
+    "replacement": "new synthetic content"
+  },
+  "setup": [
+    {
+      "id": "seed",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    },
+    {
+      "id": "keep",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "other"
+          ]
+        },
+        "content": "preserve this"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "replace",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "replacement"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "target",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "other",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "other"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "initial_count",
+      "actual": [
+        "before",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 2
+    }
+  ],
+  "expect": [
+    {
+      "name": "new_content",
+      "actual": [
+        "after",
+        "target",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "fixture",
+          "replacement"
+        ]
+      }
+    },
+    {
+      "name": "count_preserved",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 2
+    },
+    {
+      "name": "other_preserved",
+      "actual": [
+        "after",
+        "other",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "other",
+          "content"
+        ]
+      }
+    }
+  ]
+}

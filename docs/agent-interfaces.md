@@ -40,6 +40,7 @@ Transient retention errors retry after sixty seconds while trial dispatch contin
 | Method and path | Behavior |
 | --- | --- |
 | `GET /packs` | List package descriptions, runnable example definitions, and this tenant's provider capabilities. |
+| `POST /trials/validate` | Check a definition and candidate capabilities without a job, key reservation or provider access. |
 | `POST /runs` | Validate, reserve, and queue; return 202 plus `run_id` and a Location header. |
 | `GET /runs/{id}` | Read queued/running/completed/interrupted state and candidate verdict summaries. |
 | `GET /runs/{id}/comparison` | Read conditions and provenance after completion; raw observations are referenced separately. |
@@ -51,6 +52,13 @@ Transient retention errors retry after sixty seconds while trial dispatch contin
 No tenant ID, provider URL, credential, shell command, or arbitrary profile is accepted from
 the client. Body size is capped at 64 KiB, there are at most four distinct candidates, and
 the closed package schema is validated before queueing.
+
+`POST /trials/validate` accepts the same `test`/`candidates` body without an idempotency key.
+It returns `valid`, structured `issues`, and `execution_performed: false` /
+`provider_access_checked: false`. Definition and capability problems return `valid: false`;
+authentication and tenant/provider allowlists remain enforced. A valid definition does not
+establish provider availability or a passing trial. `scenario.v1` discovery includes its
+Draft 2020-12 `input_schema` and each candidate's operations; see [scenario authoring](scenarios.md).
 
 ```python
 import json
@@ -84,13 +92,15 @@ Configure the MCP host to run `proofbeak-mcp` with `PROOFBEAK_API_URL` (default
 `http://127.0.0.1:8765`) and `PROOFBEAK_API_TOKEN` supplied through its local secret/environment
 mechanism. The token binds this bridge process to one tenant. It is not a tool argument.
 
-The eleven tools are `list_trial_packs`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
+The twelve tools are `list_trial_packs`, `validate_trial`, `run_trial`, `get_run`, `compare_results`, `get_evidence`,
 `retry_cleanup`, `cancel_run`, `list_runs`, `find_evidence`, `revoke_evidence`, and `list_audit_events`.
 Typed tools publish output schemas and return structured JSON.
 Discovery supplies example trials so the agent can form a valid request without another
 documentation lookup. Discovery and reads are
 annotated read-only. Trial creation and cleanup are explicit writes; they are never hidden
 inside a read tool. A transport retry of `run_trial` must reuse its idempotency key.
+`validate_trial(test, candidates)` is read-only and returns the same nonexecuting validation
+result as REST. It does not contact providers or reserve work.
 
 The bridge connects to an operator-configured origin only, rejects URL credentials and
 remote plaintext HTTP, disables redirects and implicit proxy use, and does not print API

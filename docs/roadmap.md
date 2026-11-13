@@ -7,8 +7,10 @@ The product is platform-neutral. Python on Linux/macOS, containers and standard 
 are alternative deployment modes. OpenShift compatibility is optional; no specific Kubernetes
 distribution or cluster installation is required to complete the generic product or local pilot.
 
-The primary comparison is now repeated writes to the same storage key, exercised against
-self-hosted WsgiDAV and Apache WebDAV. Calendar trials remain an optional second domain.
+The primary flow is now a caller-defined scenario applied to compatible services, using
+reusable operations rather than a Python package per case. Object scenarios are exercised
+against self-hosted WsgiDAV and Apache WebDAV; HTTP JSON reads demonstrate different response
+shapes under the same acceptance condition. Calendar trials remain an optional fixed package.
 Google account access is not a primary development or pilot prerequisite.
 
 ## Integrated MVP 0.3.0
@@ -35,6 +37,22 @@ remain mandatory. See [qualification details](stability.md) and [recovery operat
 
 This release qualifies controlled single-coordinator operation. The human-pilot and
 demand-driven expansion gates below remain open.
+
+## User-defined scenarios 0.5.0
+
+- [x] Let callers define setup, actions, independent observers and acceptance predicates as JSON.
+- [x] Publish a machine-readable schema and candidate operation/route capabilities.
+- [x] Validate through CLI, REST and MCP without creating work or accessing providers.
+- [x] Reuse object operations across multiple cases on actual filesystem and WebDAV services.
+- [x] Map actual HTTP JSON fields from different services without synthesizing observations.
+- [x] Verify three user definitions and a caller-modified failing expectation through MCP/REST
+  and actual WsgiDAV/Apache, including cleanup and mutation-free validation/retries.
+- [x] Document authoring, reference rules, operation limits and the connector extension boundary.
+
+These are controlled synthetic checks. New conditions within existing capabilities require
+only a definition; unsupported protocols or operations remain trusted connector work. The
+human-pilot, external agent decision-quality and demand gates remain open. This increment
+does not enable arbitrary HTTP writes, executable scripts or a natural-language compiler.
 
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
