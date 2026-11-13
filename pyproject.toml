@@ -47,6 +47,9 @@ proofbeak-pilot = "proofbeak.pilot:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+proofbeak = ["web/*.html", "web/*.css", "web/*.js", "web/*.svg"]
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100

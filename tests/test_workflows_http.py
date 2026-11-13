@@ -62,6 +62,34 @@ class WorkflowHttpTests(unittest.TestCase):
         self.assertEqual(self.client.get("/suites/" + "b" * 32, headers=self.headers).status_code, 404)
         self.assertEqual(self.client.post("/suites/validate", json={"suite": example_suite(), "extra": True}, headers=self.headers).status_code, 422)
 
+    def test_browser_login_reload_csrf_logout_and_cookie_attributes(self):
+        login = self.client.post('/ui/login',json={'token':self.token},headers={'Origin':'http://testserver'})
+        self.assertEqual(login.status_code,200,login.text)
+        cookie = login.headers['set-cookie']
+        self.assertIn('HttpOnly',cookie)
+        self.assertIn('SameSite=strict',cookie)
+        self.assertNotIn(self.token,cookie)
+        self.assertEqual(self.client.get('/ui/session').json()['tenant'],'a')
+        self.assertEqual(self.client.get('/authoring/catalog').status_code,200)
+        blocked = self.client.post('/suites/validate',json={'suite':example_suite()})
+        self.assertEqual(blocked.status_code,403)
+        csrf = login.json()['csrf']
+        allowed = self.client.post('/authoring/preview',json={'suite':example_suite()},headers={'X-Proofbeak-CSRF':csrf})
+        self.assertTrue(allowed.json()['validation']['valid'])
+        self.assertFalse(allowed.json()['execution_performed'])
+        cross = self.client.post('/suites/validate',json={'suite':example_suite()},headers={'X-Proofbeak-CSRF':csrf,'Origin':'https://foreign.example'})
+        self.assertEqual(cross.status_code,403)
+        self.assertEqual(self.client.get('/ui/').status_code,200)
+        self.assertIn("script-src 'self'",self.client.get('/ui/').headers['content-security-policy'])
+        self.assertEqual(self.client.get('/ui/assets/app.js').status_code,200)
+        self.assertEqual(self.client.post('/ui/logout',json={},headers={'X-Proofbeak-CSRF':csrf}).status_code,200)
+        self.assertFalse(self.client.get('/ui/session').json()['authenticated'])
+        self.assertEqual(self.client.get('/suites').status_code,401)
+
+    def test_normal_tenant_cannot_change_operator_profiles(self):
+        response=self.client.post('/studio/providers',json={'name':'capability:new','settings':{'kind':'sqlite','connection':{}}},headers=self.headers)
+        self.assertEqual(response.status_code,403)
+
     @unittest.skipUnless(importlib.util.find_spec("cryptography"), "install signing for signed HTTP exports")
     def test_signed_suite_export_and_explicit_public_key_verification(self):
         from proofbeak.bundles import generate_keys

@@ -3,6 +3,7 @@ include Dockerfile .dockerignore requirements-runtime.lock requirements-build.in
 include compose*.yaml
 recursive-include deploy Dockerfile.* *.conf *.py *.yaml
 recursive-include src *.py
+recursive-include src/proofbeak/web *.html *.css *.js *.svg
 recursive-include examples *.json *.py
 recursive-include docs *.md *.json
 recursive-include tests *.py *.yaml

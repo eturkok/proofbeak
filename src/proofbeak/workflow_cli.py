@@ -10,6 +10,17 @@ from proofbeak.suites import example_suite, exit_code, expand_suite, run_suite
 
 
 def add_commands(commands):
+    draft = commands.add_parser("draft", help="draft a scenario from configured operations and your explicit expectation")
+    draft.add_argument("--candidate", action="append", required=True)
+    draft.add_argument("--providers", type=Path)
+    draft.add_argument("--name", required=True)
+    draft.add_argument("--observer", required=True)
+    draft.add_argument("--arguments", default="{}", help="JSON observer arguments")
+    draft.add_argument("--path", required=True, help='JSON observed field path, such as ["value"]')
+    draft.add_argument("--expected", required=True, help='JSON expected value, such as "hello" or true')
+    draft.add_argument("--predicate", default="eq")
+    draft.add_argument("--action", action="append", default=[], help="explicit operation/args JSON object")
+    draft.add_argument("--output", type=Path, required=True)
     connector = commands.add_parser("connector", help="scaffold and qualify trusted installed connector packages")
     actions = connector.add_subparsers(dest="connector_command", required=True)
     actions.add_parser("list", help="list installed entry points without loading their code")
@@ -72,6 +83,27 @@ def outputs_safe(outputs, inputs):
 
 
 def main(args):
+    if args.command == "draft":
+        from proofbeak.authoring import draft_scenario
+        from proofbeak.cli import adapters_for
+        from proofbeak.validation import candidate_issues
+        from proofbeak.packs import builtins
+        import os
+        providers = args.providers or Path(os.environ.get("PROOFBEAK_PROVIDERS_FILE", "providers.json"))
+        outputs_safe([args.output], [providers])
+        adapters = adapters_for(args.candidate, args.providers)
+        discovery = {"packages": builtins().describe(), "providers": args.candidate, "provider_capabilities": {
+            a.name: {"configured": True, "supported_trials": sorted(a.supported_trials),
+                     "operations": a.describe_operations() if hasattr(a, "describe_operations") else []} for a in adapters}}
+        spec = draft_scenario(discovery, args.candidate, args.name, args.observer,
+                              json.loads(args.arguments), json.loads(args.path), json.loads(args.expected),
+                              args.predicate, [json.loads(action) for action in args.action])
+        pack, trial = builtins().prepare(spec)
+        if candidate_issues(pack, trial, adapters):
+            raise ValueError("The draft is not compatible with the selected candidates.")
+        write_private(args.output, json.dumps(spec, indent=2, ensure_ascii=False) + "\n", overwrite=False)
+        print(json.dumps({"created": str(args.output), "valid": True, "provider_work_performed": False}))
+        return 0
     if args.command == "connector":
         from proofbeak.connector_sdk import list_plugins, qualify, scaffold
         if args.connector_command == "list":

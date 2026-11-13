@@ -40,6 +40,7 @@ def inspect_artifacts(directory):
                 assert all("extra ==" in requirement for requirement in metadata.get_all("Requires-Dist", []))
                 assert set(metadata.get_all("Provides-Extra", [])) == set(project["optional-dependencies"])
                 assert "Documentation, https://github.com/eturkok/proofbeak/blob/main/docs/installation.md" in metadata.get_all("Project-URL")
+                assert {"proofbeak/web/index.html", "proofbeak/web/app.js", "proofbeak/web/style.css", "proofbeak/web/mark.svg"} <= set(names)
         else:
             with tarfile.open(path) as archive:
                 names = archive.getnames()
@@ -144,6 +145,7 @@ def installation(directory, agents):
             assert result.returncode == 0, "installed command failed: " + str(args[0])
             return result.stdout
         version = run([cli, "--version"]).strip()
+        run([cli, "studio", "--help"])
         run([cli, "example", "--output", "scenario.json"])
         run([cli, "validate", "scenario.json", "--candidate", "scenario:filesystem", "--json"])
         run([cli, "run", "scenario.json", "--candidate", "scenario:filesystem", "--key", "installed-core",
@@ -183,6 +185,10 @@ def installation(directory, agents):
                         assert api.poll() is None and time.monotonic() < deadline, "installed API did not become ready"
                         time.sleep(.05)
                 (work / "mcp_check.py").write_text(MCP_CHECK)
+                with urlopen(endpoint + "/ui/", timeout=5) as page:
+                    assert b"Proofbeak" in page.read()
+                with urlopen(endpoint + "/ui/assets/app.js", timeout=5) as asset:
+                    assert asset.headers.get_content_type() in {"text/javascript", "application/javascript"}
                 completed = subprocess.run([str(python), "-I", "mcp_check.py"], cwd=work,
                     env={**environment, "PROOFBEAK_API_URL": endpoint, "PROOFBEAK_API_TOKEN": token},
                     capture_output=True, text=True, timeout=45)
