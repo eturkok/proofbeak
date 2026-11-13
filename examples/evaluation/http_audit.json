@@ -1,0 +1,31 @@
+{
+  "id": "scenario.v1",
+  "name": "Http audit",
+  "fixture": {},
+  "setup": [],
+  "steps": [],
+  "observe": [
+    {
+      "id": "capabilities",
+      "op": "http.get",
+      "args": {
+        "route": "capabilities",
+        "params": {}
+      }
+    }
+  ],
+  "require": [],
+  "expect": [
+    {
+      "name": "required_behavior",
+      "actual": [
+        "after",
+        "capabilities",
+        "json",
+        "audit_export"
+      ],
+      "op": "eq",
+      "value": true
+    }
+  ]
+}

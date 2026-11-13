@@ -1,0 +1,149 @@
+{
+  "id": "scenario.v1",
+  "name": "Repeated deletion preserves the neighbouring object",
+  "fixture": {
+    "key": "probe.txt",
+    "content": "synthetic probe",
+    "other": "keep.txt"
+  },
+  "setup": [
+    {
+      "id": "seed",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    },
+    {
+      "id": "keep",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "other"
+          ]
+        },
+        "content": "preserve this"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "remove",
+      "op": "object.delete",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "remove_again",
+      "op": "object.delete",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "target",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "other",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "other"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "initial_count",
+      "actual": [
+        "before",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 2
+    }
+  ],
+  "expect": [
+    {
+      "name": "target_absent",
+      "actual": [
+        "after",
+        "target",
+        "exists"
+      ],
+      "op": "eq",
+      "value": false
+    },
+    {
+      "name": "one_remaining",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    },
+    {
+      "name": "other_preserved",
+      "actual": [
+        "after",
+        "other",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "other",
+          "content"
+        ]
+      }
+    }
+  ]
+}

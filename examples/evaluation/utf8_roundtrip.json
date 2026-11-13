@@ -1,0 +1,87 @@
+{
+  "id": "scenario.v1",
+  "name": "UTF-8 contents survive a write and independent read",
+  "fixture": {
+    "key": "utf8.txt",
+    "content": "Türkçe: ığüşöç İĞÜŞÖÇ\nSynthetic: café 🐦\n"
+  },
+  "setup": [],
+  "steps": [
+    {
+      "id": "upload",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "file",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "empty_scope",
+      "actual": [
+        "before",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 0
+    }
+  ],
+  "expect": [
+    {
+      "name": "contents_preserved",
+      "actual": [
+        "after",
+        "file",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "fixture",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "one_object",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    }
+  ]
+}

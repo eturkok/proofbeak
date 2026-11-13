@@ -157,6 +157,7 @@ See [stability scope and results](docs/stability.md) and [release notes](CHANGEL
 | I want to… | Read |
 | --- | --- |
 | Define my own condition without adding Python code | [User-defined scenarios](docs/scenarios.md) |
+| Run twelve selection questions from fresh configuration to evidence | [Acceptance evaluation](docs/acceptance-evaluation.md) |
 | Compare the two storage services | [Storage trial](docs/storage-comparison.md) |
 | Connect an agent and run the complete MCP flow | [MCP walkthrough](docs/mcp-walkthrough.md) |
 | Use REST, configure tenants or inspect tool contracts | [Agent interfaces](docs/agent-interfaces.md) |

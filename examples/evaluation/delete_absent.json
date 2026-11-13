@@ -1,0 +1,124 @@
+{
+  "id": "scenario.v1",
+  "name": "Deleting an absent object preserves existing data",
+  "fixture": {
+    "existing": "keep.txt",
+    "absent": "absent.txt",
+    "content": "keep this synthetic data"
+  },
+  "setup": [
+    {
+      "id": "seed",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "existing"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "content"
+          ]
+        }
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "remove_absent",
+      "op": "object.delete",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "absent"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "existing",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "existing"
+          ]
+        }
+      }
+    },
+    {
+      "id": "absent",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "absent"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "initial_count",
+      "actual": [
+        "before",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    }
+  ],
+  "expect": [
+    {
+      "name": "existing_preserved",
+      "actual": [
+        "after",
+        "existing",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "existing",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "absent_stays_absent",
+      "actual": [
+        "after",
+        "absent",
+        "exists"
+      ],
+      "op": "eq",
+      "value": false
+    },
+    {
+      "name": "count_preserved",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    }
+  ]
+}

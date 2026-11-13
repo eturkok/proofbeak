@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add twelve author-prepared acceptance questions as ordinary scenario definitions, with an
+  automated fresh-configuration MCP/REST/worker walkthrough on actual WsgiDAV/Apache and
+  deliberately different HTTP JSON fixtures. Archive per-case evidence, aggregate HTML/JSON,
+  independent mutation-request journals and unchanged same-key/restart retrievals. This is
+  technical qualification, not human pilot or external-agent decision-quality evidence.
+
 ## 0.5.1 — 2026-11-13
 
 Make user-defined scenarios easier to repair before execution. Validation errors now include

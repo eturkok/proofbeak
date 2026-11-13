@@ -1,0 +1,167 @@
+{
+  "id": "scenario.v1",
+  "name": "Keep a backup of the original while updating the working object",
+  "fixture": {
+    "key": "draft.txt",
+    "backup": "backup.txt",
+    "original": "draft version 1",
+    "replacement": "draft version 2"
+  },
+  "setup": [
+    {
+      "id": "seed",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "original"
+          ]
+        }
+      }
+    }
+  ],
+  "steps": [
+    {
+      "id": "read_source",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "copy",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "backup"
+          ]
+        },
+        "content": {
+          "ref": [
+            "steps",
+            "read_source",
+            "content"
+          ]
+        }
+      }
+    },
+    {
+      "id": "update",
+      "op": "object.put",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        },
+        "content": {
+          "ref": [
+            "fixture",
+            "replacement"
+          ]
+        }
+      }
+    }
+  ],
+  "observe": [
+    {
+      "id": "working",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "backup",
+      "op": "object.get",
+      "args": {
+        "key": {
+          "ref": [
+            "fixture",
+            "backup"
+          ]
+        }
+      }
+    },
+    {
+      "id": "listing",
+      "op": "object.list",
+      "args": {}
+    }
+  ],
+  "require": [
+    {
+      "name": "one_original",
+      "actual": [
+        "before",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 1
+    }
+  ],
+  "expect": [
+    {
+      "name": "working_updated",
+      "actual": [
+        "after",
+        "working",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "fixture",
+          "replacement"
+        ]
+      }
+    },
+    {
+      "name": "backup_preserves_original",
+      "actual": [
+        "after",
+        "backup",
+        "content"
+      ],
+      "op": "eq",
+      "value": {
+        "ref": [
+          "before",
+          "working",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "two_objects",
+      "actual": [
+        "after",
+        "listing",
+        "count"
+      ],
+      "op": "eq",
+      "value": 2
+    }
+  ]
+}
