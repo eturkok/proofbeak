@@ -81,3 +81,11 @@ class StabilityTests(unittest.TestCase):
         self.assertEqual(self.service.coordinator_failure, "coordinator_failed")
         with self.assertRaises(ServiceError):
             self.service.submit("demo", self.spec, ["filesystem"], "after-storage-failure")
+
+    def test_failed_start_releases_owner_lock_for_recovery(self):
+        with patch.object(self.service, "_db", side_effect=sqlite3.OperationalError("unavailable")):
+            with self.assertRaises(sqlite3.OperationalError):
+                self.service.start(background=False)
+        self.assertIsNone(self.service.lock)
+        self.service.start(background=False)
+        self.assertTrue(self.service.available)

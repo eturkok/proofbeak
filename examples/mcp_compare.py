@@ -14,8 +14,8 @@ from proofbeak.report import render_html
 
 
 class ClientError(Exception):
-    def __init__(self, code, run_id=None):
-        self.code, self.run_id = code, run_id
+    def __init__(self, code, run_id=None, key_prefix=None):
+        self.code, self.run_id, self.key_prefix = code, run_id, key_prefix
 
 
 def grouped_client_error(error):
@@ -51,9 +51,13 @@ async def compare(args):
                     async def call(name, payload):
                         result = await session.call_tool(name, payload)
                         if result.isError or not isinstance(result.structuredContent, dict):
+                            if name == "run_trial" and any("restore_key_prefix_required" in getattr(block, "text", "")
+                                                           for block in result.content):
+                                raise ClientError("restore_key_prefix_required", key_prefix=state.get("key_prefix"))
                             raise ClientError("tool_call_failed", state.get("run_id"))
                         return result.structuredContent
                     catalog = await call("list_trial_packs", {})
+                    state["key_prefix"] = catalog.get("idempotency_key_prefix", "")
                     if args.spec:
                         if args.spec.stat().st_size > 65536:
                             raise ClientError("trial_too_large")
@@ -146,7 +150,8 @@ def main(argv=None):
             return 2
         return 1 if any(c["verdict"] == "fail" for c in report["candidates"]) else 0
     except ClientError as error:
-        print(json.dumps({"error": error.code, "run_id": error.run_id}), file=sys.stderr)
+        print(json.dumps({"error": error.code, "run_id": error.run_id,
+                          **({"idempotency_key_prefix": error.key_prefix} if error.key_prefix else {})}), file=sys.stderr)
         return 2 if error.run_id or error.code == "wait_timed_out" else 3
     except ImportError:
         print("Install proofbeak[agents] to use the optional MCP client.", file=sys.stderr)

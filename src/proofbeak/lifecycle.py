@@ -33,6 +33,7 @@ class EvidenceLifecycle:
         self.operation_locks = {}
         self.operation_guard = Lock()
         with self._db() as db:
+            db.execute("CREATE TABLE IF NOT EXISTS service_metadata (key TEXT PRIMARY KEY,value TEXT NOT NULL)")
             columns = {row[1] for row in db.execute("PRAGMA table_info(jobs)")}
             for column in ("revoked_at", "raw_purged_at", "completed_at"):
                 if column not in columns:
@@ -75,6 +76,13 @@ class EvidenceLifecycle:
     def _is_deleted(self, tenant, run_id):
         with self._db() as db:
             return db.execute("SELECT 1 FROM tombstones WHERE tenant=? AND id=?", (tenant, run_id)).fetchone() is not None
+
+    def key_prefix(self, db=None):
+        if db is None:
+            with self._db() as connection:
+                return self.key_prefix(connection)
+        row = db.execute("SELECT value FROM service_metadata WHERE key='idempotency_key_prefix'").fetchone()
+        return row[0] if row else ""
 
     def _disabled(self, digest):
         with self._db() as db:

@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from proofbeak.server import load_service, main
+from proofbeak.server import configured_service, load_service, main
 
 
 class ServerInitTests(unittest.TestCase):
@@ -77,3 +77,39 @@ class ServerInitTests(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             main([*self.args, "--providers", str(self.profiles)])
         self.assertFalse(self.config.exists())
+
+    def test_configuration_check_neither_creates_state_nor_contacts_providers(self):
+        self.initialize({"filesystem": {}, "webdav:test": {
+            "endpoint": "https://storage.example", "username": "test-user", "password_env": "TEST_DAV_PASSWORD"}})
+        with patch("proofbeak.adapters.http.Transport.request", side_effect=AssertionError("network during check")), \
+                patch.dict("os.environ", {}, clear=True), contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(main(["check", "--config", str(self.config)]), 0)
+        result = json.loads(output.getvalue())
+        self.assertTrue(result["valid"])
+        self.assertFalse(result["providers_configured"])
+        self.assertFalse((self.root / "state").exists())
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(main(["check", "--config", str(self.config), "--require-providers"]), 2)
+
+    def test_invalid_configuration_is_rejected_before_state_creation(self):
+        self.initialize()
+        original = json.loads(self.config.read_text())
+        tenant = original["tenants"][0]
+        invalid = [[], {**original, "tenants": []}, {**original, "tenants": [tenant, tenant]},
+                   {**original, "tenants": [{**tenant, "id": "other"}, tenant]},
+                   {**original, "tenants": [{**tenant, "providers": []}]},
+                   {**original, "tenants": [{**tenant, "token_sha256": "raw-secret-canary"}]},
+                   {**original, "execution": {"command": "arbitrary"}},
+                   {**original, "execution": []}, {**original, "state_dir": []}]
+        for config in invalid:
+            with self.subTest(config=config):
+                self.config.write_text(json.dumps(config))
+                with contextlib.redirect_stderr(io.StringIO()) as errors:
+                    self.assertEqual(main(["check", "--config", str(self.config)]), 3)
+                self.assertNotIn("raw-secret-canary", errors.getvalue())
+                self.assertFalse((self.root / "state").exists())
+
+    def test_duplicate_json_keys_are_rejected(self):
+        self.config.write_text('{"state_dir":"first","state_dir":"second","tenants":[]}')
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            configured_service(self.config)

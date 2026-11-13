@@ -112,6 +112,12 @@ cleanup route/tool to reconcile the recorded disposable resources. Cleanup progr
 returned in `cleanup_recovery`; historical trial observations are not rewritten. A missing
 or ambiguous provider resource stays unresolved when its ownership/state cannot be proven.
 
+After restoring an older snapshot, discovery includes an `idempotency_key_prefix` for new
+keys. Historical keys present in the snapshot still retrieve their original run. Unknown
+keys must use the new prefix or receive 409 `restore_key_prefix_required`; this prevents
+requests missing from the snapshot from being silently replayed. Restore never resumes
+queued/running provider work. See [state recovery](state-recovery.md).
+
 Pending context is revalidated before execution. Package, provider-profile, or executor-policy drift stops the
 job without making a new provider write. Shutdown terminates owned workers and preserves
 cleanup intent; if the coordinator has not finished, it retains exclusive ownership.

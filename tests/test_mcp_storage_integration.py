@@ -15,6 +15,7 @@ from collections import Counter
 from pathlib import Path
 
 from proofbeak.interfaces.mcp import BridgeClient
+from proofbeak.recovery import backup, restore
 from proofbeak.service import ServiceError
 from webdav_fixtures import AVAILABLE, PASSWORD, WebDAVFixtures
 
@@ -173,6 +174,44 @@ class McpStorageIntegrationTests(WebDAVFixtures, unittest.TestCase):
                     self.assertTrue(all(row["path"].startswith(
                         "/proofbeak-" + fresh["execution_run_id"] + "/") for row in rows[5:]))
                 self.assertEqual(len(client.request("GET", "/runs")["runs"]), 2)
+                # Restore the coordinator to its original path, keeping the same actual
+                # provider accounts. Historical reads must remain mutation-free.
+                api.terminate()
+                api.wait(timeout=10)
+                state = self.root / "api-state"
+                backup(state, self.root / "snapshot")
+                state.rename(self.root / "retired-api-state")
+                restored = restore(self.root / "snapshot", state)
+                api = subprocess.Popen([sys.executable, "-m", "proofbeak.server", "serve",
+                    "--config", str(config_path), "--port", str(port)],
+                    env={**base_env, "PROOFBEAK_TEST_DAV_PASSWORD": PASSWORD},
+                    stdout=subprocess.DEVNULL, stderr=log, cwd=ROOT)
+                deadline = time.monotonic() + 20
+                while True:
+                    try:
+                        client.request("GET", "/health")
+                        break
+                    except ServiceError:
+                        if api.poll() is not None or time.monotonic() >= deadline:
+                            self.fail("restored REST service did not become ready")
+                        time.sleep(.05)
+                historical = self.client(client_env, output / "mcp-restored-history.json", key="explicit-new-trial")
+                self.assertEqual(historical["run_id"], fresh["run_id"])
+                for original, again in zip(fresh["candidates"], historical["candidates"]):
+                    self.assertEqual(original["evidence_hash"], again["evidence_hash"])
+                    self.assertEqual(original["observed_at"], again["observed_at"])
+                stale = self.client(client_env, output / "stale-after-restore.json", key="unknown-old-key", code=3)
+                self.assertEqual(stale["error"], "restore_key_prefix_required")
+                self.assertEqual(stale["idempotency_key_prefix"], restored["idempotency_key_prefix"])
+                self.assertEqual(self.mutations(), final_journal)
+                restored_trial = self.client(client_env, output / "mcp-restored-new-trial.json",
+                                             key=restored["idempotency_key_prefix"] + "explicit-new-trial")
+                self.assertNotEqual(restored_trial["run_id"], fresh["run_id"])
+                after_restore = self.wait_mutations(15)
+                for name, rows in after_restore.items():
+                    self.assertEqual(rows[:10], final_journal[name])
+                    self.assertTrue(all(row["path"].startswith(
+                        "/proofbeak-" + restored_trial["execution_run_id"] + "/") for row in rows[10:]))
                 verification = {
                     "scope": "actual MCP stdio -> REST -> subprocess -> WsgiDAV and Apache",
                     "first_run_id": first["run_id"], "retry_run_id": repeated["run_id"],
@@ -181,7 +220,9 @@ class McpStorageIntegrationTests(WebDAVFixtures, unittest.TestCase):
                     "explicit_new_key_mutation_delta_per_provider": 5,
                     "foreign_tenant_access": "rejected", "unallowed_candidate": "rejected",
                     "lookup_fresh_flag_created_job": False, "revocation_blocks_reuse": True,
-                    "journals": final_journal,
+                    "restore_history_mutation_delta": 0, "restore_stale_key": "rejected",
+                    "restore_new_key_mutation_delta_per_provider": 5,
+                    "restored_run_id": restored_trial["run_id"], "journals": after_restore,
                     "limits": ["No LLM was invoked; this verifies the protocol and application workflow.",
                                "HTTP mutation counts do not establish internal disk-write counts or exact-once semantics."]}
                 (output / "workflow-verification.json").write_text(json.dumps(verification, indent=2) + "\n")

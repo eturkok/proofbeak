@@ -229,6 +229,8 @@ Supply the one-time issued API key to your client/MCP host locally. See
 binds to loopback by default and runs bounded worker subprocesses, cancellation, and crash recovery.
 See [worker lifecycle and limits](docs/worker-processes.md) and the
 [container and Helm deployment package](docs/deployment.md). Production identity remains pending.
+Use [configuration checks and verified state recovery](docs/state-recovery.md) for offline
+backup/restore and the post-restore protection against unintended retries.
 Core CLI usage remains dependency-free.
 
 ## Next increments
