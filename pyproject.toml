@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proofbeak"
+version = "0.3.0"
+description = "Consumer-defined acceptance trials for AI agents"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+authors = [{name = "Esref Turkok"}]
+dependencies = []
+
+[project.optional-dependencies]
+calendar = ["icalendar>=6.1,<8"]
+dev = ["ruff>=0.9,<1", "radicale>=3.5,<4"]
+agents = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.34,<1", "mcp>=1.26,<2", "httpx>=0.28,<1"]
+
+[project.scripts]
+proofbeak = "proofbeak.cli:main"
+proofbeak-server = "proofbeak.server:main"
+proofbeak-mcp = "proofbeak.interfaces.mcp:main"
+proofbeak-pilot = "proofbeak.pilot:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["F"]

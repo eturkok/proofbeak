@@ -1,0 +1,8 @@
+FROM python:3.13-slim
+RUN pip install --no-cache-dir 'radicale>=3.5,<4' \
+    && useradd --uid 10001 --create-home trial
+USER 10001:10001
+COPY deploy/radicale.config /etc/radicale/config
+COPY deploy/dev-users.example /etc/radicale/users
+EXPOSE 5232
+CMD ["python", "-m", "radicale", "--config", "/etc/radicale/config"]

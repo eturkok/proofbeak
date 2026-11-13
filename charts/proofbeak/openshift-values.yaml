@@ -1,0 +1,9 @@
+# Let the namespace SCC assign the non-root UID/GID; ensure the PVC permits its state directory.
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: null
+  fsGroupChangePolicy: null
+  seccompProfile:
+    type: RuntimeDefault
+networkPolicy:
+  dnsNamespace: openshift-dns

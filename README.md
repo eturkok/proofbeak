@@ -1,2 +1,257 @@
-# proofbeak
-Consumer-defined acceptance trials for AI agents. Bring a condition, test a service, inspect the evidence.
+# Proofbeak
+
+**Try a service before your agent chooses it.**
+
+Proofbeak runs a consumer's acceptance condition against candidate services and returns the
+observations behind each result. The agent runtime stays outside Proofbeak. No LLM, product
+account, license key, or external inference service is required by the local core.
+
+Proofbeak is platform-neutral. Run the CLI or optional REST/MCP service directly on
+Linux/macOS with Python, use the container image, or choose the standard Kubernetes/Helm
+deployment. Kubernetes and OpenShift are optional hosting choices. No OpenShift operator,
+CRD, SDK, subscription, or platform account is required. Calico is used to verify network
+policy in CI; it is not a Proofbeak runtime dependency.
+
+Version **0.3.0** is the first integrated MVP: CLI, REST/MCP, evidence lifecycle and optional
+container/Helm deployment. Real-provider and protocol checks use synthetic test data;
+human onboarding, adoption and decision-quality evaluation remain open pilot work.
+See [release notes](CHANGELOG.md) and the [delivery roadmap](docs/roadmap.md).
+Development happens on scoped branches and reaches `main` through verified pull requests.
+
+## Quick start
+
+From a checkout, Python 3.11+ on Linux or macOS is enough for a real filesystem trial:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
+  --candidate filesystem --key first-trial \
+  --output reports/first-trial.json --html reports/first-trial.html
+```
+
+Open `reports/first-trial.html` to inspect the condition, independent observations and cleanup.
+For two real HTTP services and an agent protocol client, follow the
+[MCP walkthrough](docs/mcp-walkthrough.md).
+
+## The first question: repeat a file upload
+
+> Write the same file content to the same key again.
+> Keep exactly one test-data object, the same key, and the same content.
+
+Proofbeak reads the baseline, repeats the write, then lists and reads the actual stored data.
+A successful
+write response is never treated as evidence that the condition passed.
+
+| Outcome | Meaning |
+| --- | --- |
+| `pass` | Every acceptance condition was observed in this trial. |
+| `fail` | At least one condition was observably violated. |
+| `inconclusive` | Missing permissions, invalid baseline, ambiguous writes, or unavailable observations prevented a conclusion. |
+
+Cleanup status is separate from the verdict. A passing trial with failed cleanup exits with an
+operational error and leaves a durable cleanup record.
+
+## Registered trial packages
+
+The worker owns reservations, execution order, evidence, and cleanup. A versioned trial
+package owns its closed schema, baseline validation, and domain-specific metrics. Provider
+adapters declare which packages they support; an incompatible combination is rejected
+before a run or a resource is created.
+
+| Package | Acceptance condition | Available adapters |
+| --- | --- | --- |
+| `calendar.move_one.v1` | Move one weekly occurrence while preserving the other instances and durations. | Radicale; Google adapter awaiting live verification; labeled simulation controls |
+| `storage.put_same_key.v1` | Repeating a write to the same key preserves one test-data object and the same content. | WsgiDAV and Apache WebDAV adapter; local filesystem reference |
+
+```bash
+PYTHONPATH=src python3 -m proofbeak packs
+PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
+  --candidate filesystem --key storage-first-trial \
+  --output reports/storage.json --html reports/storage.html
+```
+
+The filesystem trial uses a generated disposable directory under `.proofbeak/storage` and
+reads actual directory entries and file contents before cleanup through the same generic
+worker; its result describes this local adapter and filesystem,
+not a remote object store such as S3. `PROOFBEAK_FILESYSTEM_ROOT` can configure the test root.
+Read [the package contract](docs/trial-packs.md) to extend the built-in registry.
+
+## Compare two self-hosted storage services
+
+The primary service comparison uses WsgiDAV and Apache WebDAV with the same storage package.
+Both run locally with disposable data and test credentials. No Google/cloud account,
+external LLM or Kubernetes cluster is required. The adapter uses standard WebDAV; these two
+servers are integration fixtures rather than mandatory product backends.
+
+See [the storage comparison walkthrough](docs/storage-comparison.md) for loopback Compose
+fixtures, CLI/REST configuration and the exact limits of this acceptance condition.
+For a complete agent workflow, use the [runnable MCP comparison client](docs/mcp-walkthrough.md)
+to discover candidates, run the trial, verify evidence and export JSON/HTML.
+
+## Optional Google Calendar adapter
+
+The Google adapter implements the same calendar package with a generated secondary calendar,
+independent expanded-event reads, ETag-protected instance updates, and ownership-checked
+cleanup. It is protocol-tested with an injected transport; a real Google account trial has
+not been run yet. Injected transports are marked as simulation evidence.
+
+After configuring a short-lived OAuth token and a separate test account in your local
+environment, check identity without creating anything:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak google-preflight
+```
+
+To run the same fixture against both providers once their test-account access is available:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak run examples/calendar.move_one.v1.json \
+  --candidate radicale --candidate google-calendar --key calendar-comparison-1 \
+  --output reports/comparison.json --html reports/comparison.html
+```
+
+The CLI never writes to a primary calendar or sends participant invitations. See
+[Google account setup and live verification](docs/google-calendar.md); do not send tokens
+in chat or commit them. The `.env.example` file documents variables but is not loaded by
+the CLI automatically. Core CI has no Google credentials and never invokes a live Google trial.
+
+## Run the offline controls
+
+Python 3.11+ on Linux or macOS is sufficient; this path has no third-party dependencies.
+
+```bash
+PYTHONPATH=src python3 -m proofbeak validate examples/calendar.move_one.v1.json
+PYTHONPATH=src python3 -m proofbeak run examples/calendar.move_one.v1.json \
+  --candidate simulation:correct \
+  --candidate simulation:move_all \
+  --candidate simulation:duplicate \
+  --candidate simulation:permission_denied \
+  --key offline-controls-1 \
+  --output reports/controls.json \
+  --html reports/controls.html
+```
+
+Expected outcomes: `pass`, `fail`, `fail`, `inconclusive`. Exit code `2` is expected for that
+combined demonstration. Open `reports/controls.html` to inspect each condition and the raw
+before/after records. **These are simulations, not measured Google or Radicale results.**
+Simulations are explicitly excluded from provider comparison eligibility.
+
+After installing the package, use `proofbeak` instead of `PYTHONPATH=src python3 -m proofbeak`:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[calendar,dev]'
+```
+
+## Try a real local Radicale server
+
+The adapter uses a new disposable CalDAV collection for every trial. It writes a recurring
+VEVENT and one `RECURRENCE-ID` exception. Observations come from separate server-expanded
+CalDAV REPORT requests. It never writes to an existing calendar or sends invitations.
+
+```bash
+docker compose up --build -d radicale
+export PROOFBEAK_RADICALE_URL=http://127.0.0.1:5232
+export PROOFBEAK_RADICALE_USERNAME=proofbeak
+export PROOFBEAK_RADICALE_PASSWORD=proofbeak-local-only
+proofbeak run examples/calendar.move_one.v1.json \
+  --candidate radicale --key radicale-first-trial \
+  --output reports/radicale.json --html reports/radicale.html
+```
+
+The Compose service is a disposable loopback-only test server with a documented test password
+and temporary storage. Use a separate test account for other deployments. Remote plaintext
+HTTP endpoints are rejected. Docker runs the service as a non-root user.
+
+If calendar dependencies are missing, the result is `inconclusive` with
+`calendar_dependency_missing`. Successful real-provider operation must be established by the
+integration suite or your own run; the offline controls do not establish it.
+
+## Repeat and recover
+
+Use the same `--key` for a retry of the same request. A completed report is returned without
+another resource being created. The key is bound to the complete test, candidate order,
+adapter version, observer version, and non-secret provider profile. A changed request using
+the same key produces a conflict. Use a new key for an intentionally fresh observation.
+The package ID and version are also part of that context. The v0.2 resource ledger uses
+domain-neutral `scope_id`; cleanup still accepts records from the initial v0.1 CLI.
+
+Run state and cleanup intent are persisted before provider writes in `.proofbeak/runs.sqlite3`.
+A local process lock prevents concurrent cleanup from removing an active trial's resources.
+An interrupted request is **not** silently replayed. Inspect the original process, then run:
+
+```bash
+proofbeak cleanup --candidate radicale
+```
+
+Cleanup recovery requires the original endpoint and test-account scope. Resources whose
+ownership could not be established are left for manual inspection. A recovery changes the
+resource ledger; it does not rewrite historical trial evidence or automatically resume work.
+
+| Exit code | Meaning |
+| --- | --- |
+| `0` | All trial conditions passed and cleanup completed, or validation/cleanup succeeded. |
+| `1` | At least one observed failure; no inconclusive or cleanup errors. |
+| `2` | Inconclusive, interrupted, or cleanup requiring attention. |
+| `3` | Invalid input, configuration, or idempotency conflict. |
+
+## Verify
+
+```bash
+PYTHONPATH=src python3 -m unittest discover -s tests -v
+# Real server integration; refuses to pass by skipping dependencies:
+PROOFBEAK_REQUIRE_INTEGRATION=1 PYTHONPATH=src \
+  python3 tests/test_radicale_integration.py -v
+```
+
+The offline suite covers false positives, duplicate and missing identities, UTC normalization,
+DST boundaries, interruption, idempotency, resource ownership, cleanup recovery, and report
+escaping. CI installs calendar dependencies and runs a real Radicale process on loopback.
+The initial real-server integration and the Python 3.11/3.13/3.14 core jobs
+[passed in GitHub CI](https://github.com/eturkok/proofbeak/actions/runs/43296836958).
+The integration job also saves its JSON/HTML observations as a `radicale-trial-evidence`
+artifact; the records contain synthetic calendar data and no account password.
+
+## Agent interfaces
+
+The optional REST service and authenticated MCP stdio bridge expose the same trial packages
+to external agents. Runs are tenant-bound, queued durably, and protected by scoped
+idempotency keys. A restarted worker never blindly replays an interrupted write.
+
+```bash
+python -m pip install -e '.[agents]'
+proofbeak-server init --tenant demo
+proofbeak-server serve
+```
+
+Supply the one-time issued API key to your client/MCP host locally. See
+[agent interface setup, tools, and recovery](docs/agent-interfaces.md). The built-in launcher
+binds to loopback by default and runs bounded worker subprocesses, cancellation, and crash recovery.
+See [worker lifecycle and limits](docs/worker-processes.md) and the
+[container and Helm deployment package](docs/deployment.md). Production identity remains pending.
+Core CLI usage remains dependency-free.
+
+## Next increments
+
+Run history, explicit context-bound evidence lookup, revocation, metadata audit, and the
+seven-day raw/thirty-day summary retention policy are implemented. See
+[evidence lifecycle and tenant removal](docs/evidence-lifecycle.md). Reuse never refreshes
+an observation's timestamp, and deleted idempotency keys cannot silently trigger a new write.
+
+1. Use the verified repeated-write case and MCP client to collect concrete selection questions.
+2. Collect actual developer selection questions and use the prepared pilot evaluation protocol.
+3. Add production identity when a remote pilot requires it; container and Helm CI checks pass.
+4. Keep optional calendar/cloud integrations separate from primary product exit criteria.
+
+See [architecture](docs/architecture.md), [milestones](docs/roadmap.md),
+[Google access checklist](docs/google-calendar.md), and [contribution rules](CONTRIBUTING.md).
+The core is licensed under Apache-2.0.
+
+## Pilot preparation
+
+Candidate reports now record trial/cleanup wall time, worker CPU and instrumented HTTP attempts.
+External agent tokens and cost stay unmeasured. The offline proofbeak-pilot command prepares
+empty study templates, seals two-reviewer references, and scores externally collected paired
+agent attempts plus developer onboarding/return observations.
+See [the pilot protocol](docs/pilot.md). No actual human pilot or decision-quality claim has
+been made; simulations and incomplete measurements cannot pass the continuation gates.

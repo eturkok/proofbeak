@@ -1,0 +1,58 @@
+name: Deployment checks
+
+on:
+  pull_request:
+    paths: [Dockerfile, requirements-runtime.lock, pyproject.toml, 'src/**', 'charts/**', 'tests/**', '.github/workflows/deployment.yml']
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install 'pyyaml>=6,<7'
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.2
+      - run: python tests/check_chart.py
+      - run: docker build --tag proofbeak:test .
+      - run: python tests/container_smoke.py proofbeak:test
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: proofbeak-ci
+          config: tests/kind-calico.yaml
+          node_image: kindest/node:v1.35.0
+          wait: 120s
+      - name: Install policy-enforcing CNI
+        run: |
+          kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.33.0/manifests/calico.yaml
+          kubectl -n kube-system rollout status daemonset/calico-node --timeout=240s
+          kubectl -n kube-system rollout status deployment/calico-kube-controllers --timeout=180s
+          kubectl wait --for=condition=Ready node --all --timeout=120s
+      - run: kind load docker-image proofbeak:test --name proofbeak-ci
+      - run: PYTHONPATH=src python tests/kubernetes_smoke.py
+      - run: python tests/network_policy_smoke.py
+      - name: Cluster diagnostics
+        if: failure()
+        run: |
+          kubectl -n proofbeak-smoke get pods,pvc,events || true
+          kubectl -n proofbeak-smoke logs deployment/proofbeak-proofbeak --all-containers=true || true
+          kubectl -n kube-system get pods,events || true
+          kubectl -n kube-system logs daemonset/calico-node --tail=80 || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deployment-smoke-evidence
+          path: |
+            reports/*-smoke.json
+            reports/chart-check.json
+          if-no-files-found: warn
+          retention-days: 7

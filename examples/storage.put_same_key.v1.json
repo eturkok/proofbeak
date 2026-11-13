@@ -1,0 +1,10 @@
+{
+  "id": "storage.put_same_key.v1",
+  "fixture": {"key": "probe.txt", "content": "Proofbeak synthetic acceptance trial"},
+  "action": {"op": "put_same_key"},
+  "expect": [
+    {"field": "object_count", "eq": 1},
+    {"field": "keys_unchanged", "eq": true},
+    {"field": "content_unchanged", "eq": true}
+  ]
+}

@@ -1,0 +1,22 @@
+services:
+  api:
+    image: proofbeak:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    init: true
+    ports:
+      - '127.0.0.1:8765:8765'
+    volumes:
+      - proofbeak-data:/var/lib/proofbeak
+      - ${PROOFBEAK_SERVER_CONFIG:-./.proofbeak/container-config.json}:/run/proofbeak/config.json:ro
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=0,mode=0700,size=64m
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
+    stop_grace_period: 10s
+    mem_limit: 2g
+    cpus: 2
+volumes:
+  proofbeak-data:

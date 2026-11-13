@@ -1,0 +1,12 @@
+services:
+  radicale:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.radicale
+    ports:
+      - '127.0.0.1:5232:5232'
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,gid=10001,mode=0700
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
