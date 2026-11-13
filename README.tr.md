@@ -2,7 +2,7 @@
 
 **Bir servisin ihtiyacınızı karşıladığını test edin. Kanıta dayanarak karar verin.**
 
-[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md)
+[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md) · [PyPI](https://pypi.org/project/proofbeak/)
 
 Proofbeak, geliştiriciler ve yapay zekâ ajanları için kendi altyapınızda çalışan bir kabul
 testi ve kanıt servisidir. Uygulamanızın ihtiyaç duyduğu davranışı tanımlar, aday servisleri
@@ -32,14 +32,17 @@ kaynağı bulunur. Son seçimi geliştirici veya dışarıdaki ajan yapar.
 
 ## Hızlı başlangıç
 
-Repo kökünden, Linux/macOS üzerinde Python 3.11+ kullanın. Bu yerel örnek ek Python paketi,
-harici hesap veya model servisi gerektirmez:
+Linux/macOS üzerinde Python 3.11+ kullanın. Paketi PyPI'dan sanal ortama kurun; bu yerel
+örnek sağlayıcı hesabı veya model servisi gerektirmez:
 
 ```bash
-PYTHONPATH=src python3 -m proofbeak example --output scenario.json
-PYTHONPATH=src python3 -m proofbeak validate scenario.json \
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install proofbeak==0.6.0
+proofbeak example --output scenario.json
+proofbeak validate scenario.json \
   --candidate scenario:filesystem
-PYTHONPATH=src python3 -m proofbeak run scenario.json \
+proofbeak run scenario.json \
   --candidate scenario:filesystem --key first-trial \
   --output reports/first-trial.json --html reports/first-trial.html
 ```

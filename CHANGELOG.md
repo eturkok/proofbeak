@@ -10,10 +10,10 @@
 
 ## 0.6.0 — 2026-11-13
 
-Distribution preparation: installable Python wheel/source archive, the existing REST/MCP
-commands and a versioned container built from the tested wheel. Registry publication follows a
-main version increase or explicit workflow run after publisher authorization; this entry does not assert
-that PyPI or GHCR already hosts the version.
+Published [Python wheel/source distributions on PyPI](https://pypi.org/project/proofbeak/0.6.0/)
+and `ghcr.io/eturkok/proofbeak:0.6.0`, with the existing REST/MCP commands. The
+[release workflow](https://github.com/eturkok/proofbeak/actions/runs/43445753108) verified
+public PyPI file hashes, a fresh installation and trial, and the published image identity.
 
 - Add `proofbeak example --output scenario.json` so an installed package can create an editable
   starting definition without repository example files. Creation is private and atomic;

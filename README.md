@@ -2,7 +2,7 @@
 
 **Check whether a service meets your requirements. Decide with evidence.**
 
-[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md)
+[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md) · [PyPI](https://pypi.org/project/proofbeak/)
 
 Proofbeak is a self-hosted acceptance-testing and evidence service for developers and AI
 agents. Define the behavior your application needs, choose candidate services, and run the
@@ -31,14 +31,17 @@ evidence provenance. The developer or external agent makes the final choice.
 
 ## Quick start
 
-From a checkout, use Python 3.11+ on Linux or macOS. This local example needs no additional
-Python packages, external account or model service:
+Use Python 3.11+ on Linux or macOS. Install from PyPI in a virtual environment; the local
+example needs no provider account or model service:
 
 ```bash
-PYTHONPATH=src python3 -m proofbeak example --output scenario.json
-PYTHONPATH=src python3 -m proofbeak validate scenario.json \
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install proofbeak==0.6.0
+proofbeak example --output scenario.json
+proofbeak validate scenario.json \
   --candidate scenario:filesystem
-PYTHONPATH=src python3 -m proofbeak run scenario.json \
+proofbeak run scenario.json \
   --candidate scenario:filesystem --key first-trial \
   --output reports/first-trial.json --html reports/first-trial.html
 ```

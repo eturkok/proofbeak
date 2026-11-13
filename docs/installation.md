@@ -4,18 +4,17 @@ One Python distribution contains the CLI, REST service and MCP stdio bridge. The
 no third-party Python dependencies. REST/MCP require the `agents` extra; calendar adapters
 add the optional `calendar` extra. Linux/macOS and Python 3.11+ are supported.
 
-## Install a tested build now
+## Install from PyPI
 
-Until a PyPI release is confirmed, download the `python-distributions` artifact from a
-successful [Distribution and publishing workflow](https://github.com/eturkok/proofbeak/actions/workflows/release.yml).
-Extract it; `dist/` contains the wheel and source archive, and `manifest.json` records their
-SHA-256 values. CI builds the wheel from the source distribution and tests that same wheel
-outside the checkout on Python 3.11, 3.12, 3.13 and 3.14.
+[Proofbeak 0.6.0](https://pypi.org/project/proofbeak/0.6.0/) is published on PyPI. The
+[release workflow](https://github.com/eturkok/proofbeak/actions/runs/43445753108) verified
+the public wheel/source hashes against the tested artifacts and ran a fresh public-index
+installation, trial, evidence-hash check and cleanup.
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install --no-index --no-deps dist/proofbeak-0.6.0-py3-none-any.whl
+python -m pip install proofbeak==0.6.0
 proofbeak --version
 proofbeak example --output scenario.json
 proofbeak validate scenario.json --candidate scenario:filesystem --json
@@ -27,21 +26,26 @@ Open `reports/trial.html`. Edit `scenario.json` for your own condition and choos
 `example` creates a private file and refuses existing files or symlinks. It makes no provider
 request. Templates come from the installed package; no source checkout is needed.
 
-After publication to PyPI, the equivalent installation is:
+## Install a CI artifact
+
+Download the `python-distributions` artifact from a successful
+[Distribution and publishing workflow](https://github.com/eturkok/proofbeak/actions/workflows/release.yml).
+Extract it; `dist/` contains the wheel and source archive, and `manifest.json` records their
+SHA-256 values. CI builds the wheel from the source distribution and tests that same wheel
+outside the checkout on Python 3.11, 3.12, 3.13 and 3.14. In an activated virtual environment:
 
 ```bash
-python -m pip install proofbeak==0.6.0
+python -m pip install --no-index --no-deps dist/proofbeak-0.6.0-py3-none-any.whl
 ```
 
-The registry command is a publication target, not a claim that the version is already live.
 The wheel can also be mirrored in an operator-owned package index.
 
 ## Run REST and connect an MCP host
 
-Install the interface extra from the downloaded wheel:
+Install the interface extra:
 
 ```bash
-python -m pip install 'dist/proofbeak-0.6.0-py3-none-any.whl[agents]'
+python -m pip install 'proofbeak[agents]==0.6.0'
 ```
 
 Save this operator-owned map as `providers.json`:
@@ -89,7 +93,7 @@ After loading, the image tag is `proofbeak:distribution`. Follow [deployment con
 for the private configuration mount, writable state volume and service networking.
 The image is a Linux amd64 build; additional architectures have not been qualified.
 
-A successful registry publication additionally supplies `ghcr.io/eturkok/proofbeak:0.6.0`.
+The published registry image is `ghcr.io/eturkok/proofbeak:0.6.0`.
 Registry visibility and pull authentication follow the package owner's settings. Local archive
 use does not require registry credentials. Prefer a recorded digest for deployments.
 
