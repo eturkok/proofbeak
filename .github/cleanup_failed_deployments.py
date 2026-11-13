@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import time
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -44,6 +45,22 @@ def failed_only(states):
         states[0] in {'failure', 'error', 'inactive'}
 
 
+def save_report(result):
+    path = Path('reports/failed-deployment-cleanup.json')
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(result, indent=2) + '\n')
+
+
+def confirm_absent(path, timeout=45):
+    deadline = time.monotonic() + timeout
+    while True:
+        if api(path, missing=True) is None:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(2)
+
+
 def audit():
     plan = {'repository': REPOSITORY, 'deployments': [], 'workflow_runs': [], 'preserved_deployments': []}
     for deployment in pages('/deployments'):
@@ -65,6 +82,9 @@ def apply(plan):
     if plan.get('repository') != REPOSITORY or set(plan) != {'repository', 'deployments', 'workflow_runs', 'preserved_deployments'}:
         raise ValueError('unexpected cleanup plan')
     deleted, skipped = {'deployments': [], 'workflow_runs': []}, []
+    pending = {'deployments': [], 'workflow_runs': []}
+    result = {'deleted': deleted, 'skipped': skipped, 'pending_verification': pending}
+    save_report(result)
     for row in plan['deployments']:
         identifier = row['id']
         if type(identifier) is not int or not failed_only(row['states']):
@@ -80,10 +100,14 @@ def apply(plan):
         if states[0] != 'inactive':
             api(f'/deployments/{identifier}/statuses', 'POST', {'state': 'inactive', 'auto_inactive': False,
                                                             'description': 'Remove failed deployment record requested by repository owner'})
+        pending['deployments'].append(identifier)
+        save_report(result)
         api(f'/deployments/{identifier}', 'DELETE')
-        if api(f'/deployments/{identifier}', missing=True) is not None:
+        if not confirm_absent(f'/deployments/{identifier}'):
             raise RuntimeError('deployment deletion not confirmed')
+        pending['deployments'].remove(identifier)
         deleted['deployments'].append(identifier)
+        save_report(result)
     for row in plan['workflow_runs']:
         identifier = row['id']
         if type(identifier) is not int or identifier not in FAILED_RUNS:
@@ -96,11 +120,23 @@ def apply(plan):
                 run['status'] != 'completed' or run['conclusion'] != 'failure':
             skipped.append({'workflow_run': identifier, 'reason': 'state_changed'})
             continue
+        pending['workflow_runs'].append(identifier)
+        save_report(result)
         api(f'/actions/runs/{identifier}', 'DELETE')
-        if api(f'/actions/runs/{identifier}', missing=True) is not None:
+        if not confirm_absent(f'/actions/runs/{identifier}'):
             raise RuntimeError('workflow-run deletion not confirmed')
+        pending['workflow_runs'].remove(identifier)
         deleted['workflow_runs'].append(identifier)
-    return {'deleted': deleted, 'skipped': skipped}
+        save_report(result)
+    preserved = []
+    for row in plan['preserved_deployments']:
+        deployment = api(f'/deployments/{row["id"]}', missing=True)
+        if deployment is None:
+            raise RuntimeError('a preserved deployment is unexpectedly absent')
+        preserved.append(row['id'])
+    result['preserved_deployments'] = preserved
+    save_report(result)
+    return result
 
 
 def main():
@@ -111,9 +147,7 @@ def main():
     if os.environ.get('GITHUB_REPOSITORY') != REPOSITORY or os.environ.get('GITHUB_REF') != BRANCH:
         raise ValueError('cleanup is restricted to its dedicated repository and branch')
     result = apply(json.loads(args.plan.read_text())) if args.apply else audit()
-    path = Path('reports/failed-deployment-cleanup.json')
-    path.parent.mkdir(exist_ok=True)
-    path.write_text(json.dumps(result, indent=2) + '\n')
+    save_report(result)
     print(('PROOFBEAK_CLEANUP_RESULT=' if args.apply else 'PROOFBEAK_CLEANUP_PLAN=') + json.dumps(result))
 
 
