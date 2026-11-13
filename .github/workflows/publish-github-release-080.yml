@@ -1,0 +1,60 @@
+name: Publish GitHub release v0.8.0
+
+on:
+  push:
+    branches: [chore/github-release-v0.8.0]
+    paths: ['.github/publish_github_release_080.py', '.github/release-v0.8.0.md', '.github/workflows/publish-github-release-080.yml']
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: proofbeak-github-release-v0.8.0
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'eturkok/proofbeak' && github.ref == 'refs/heads/chore/github-release-v0.8.0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: tested-python
+          run-id: 43513858673
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-container-image
+          path: tested-image
+          run-id: 43513858673
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: pypi-publication-verification
+          path: tested-verification
+          run-id: 43513858673
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: workbench-browser-qualification
+          path: tested-browser
+          run-id: 43513858661
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify original files, upload draft assets and publish pinned release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/publish_github_release_080.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: github-release-v0.8.0-audit
+          path: github-release-result.json
+          if-no-files-found: warn
+          retention-days: 14
