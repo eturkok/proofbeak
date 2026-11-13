@@ -9,7 +9,7 @@ is required. The browser interface is served by the Python package.
 Install the `agents` and `connectors` extras in a virtual environment, then run:
 
 ```bash
-python -m pip install 'proofbeak[agents,connectors]==0.8.0'
+python -m pip install 'proofbeak[agents,connectors]==0.8.1'
 proofbeak studio
 ```
 
