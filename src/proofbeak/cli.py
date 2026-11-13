@@ -162,6 +162,10 @@ def main(argv=None):
             raise ValueError("JSON and HTML output paths must differ")
         protected = {args.spec.resolve(), args.db.resolve(), args.db.with_suffix(args.db.suffix + ".lock").resolve()}
         protected.update(Path(str(args.db) + suffix).resolve() for suffix in ("-journal", "-wal", "-shm"))
+        if args.providers:
+            protected.add(args.providers.resolve())
+        elif any(name.startswith("capability:") for name in args.candidate):
+            protected.add(Path(os.environ.get("PROOFBEAK_PROVIDERS_FILE", "providers.json")).resolve())
         if any(path.resolve() in protected for path in (args.output, args.html) if path is not None):
             raise ValueError("report output must not replace trial or state files")
         adapters = adapters_for(args.candidate, args.providers)
