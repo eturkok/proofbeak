@@ -162,6 +162,17 @@ def main():
                 assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
                 page.screenshot(path=str(reports/'builder-mobile.png'),full_page=True)
                 results.append({'case':'responsive_mobile_navigation_and_editor','passed':True,'viewport':'390x844'})
+                page.get_by_role('button',name='JSON definition',exact=True).click()
+                invalid=service.get_suite('local',first)['definition']
+                invalid['cases'][0]['test']['observe']=[{}]
+                before=len(service.history('local')['runs'])
+                page.locator('#suite-json').fill(json.dumps(invalid))
+                page.get_by_role('button',name='Validate & preview',exact=True).click()
+                expect(page.get_by_role('heading',name='Let’s fix these details.',exact=True)).to_be_visible()
+                assert len(service.history('local')['runs'])==before
+                page.get_by_role('button',name='Visual editor',exact=True).click()
+                expect(page.locator('#suite-json')).to_be_visible()
+                results.append({'case':'incomplete_import_stays_editable_without_provider_work','passed':True})
                 assert not errors, errors
                 context.close()
                 browser.close()
