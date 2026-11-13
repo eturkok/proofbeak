@@ -383,8 +383,8 @@ class TrialService(EvidenceLifecycle):
             interval = 60 if self.maintenance_deferred else 3600
             if self.last_maintenance == 0 or now - self.last_maintenance >= interval:
                 try:
-                    self.maintain()
-                    self.maintenance_deferred = False
+                    maintenance = self.maintain()
+                    self.maintenance_deferred = bool(maintenance.get("deferred", 0))
                 except (OSError, sqlite3.Error, ServiceError):
                     # A temporary retention failure must not kill the dispatcher or
                     # print potentially credential-bearing exception messages.

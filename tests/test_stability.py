@@ -175,3 +175,19 @@ class StabilityTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertNotIn("Traceback", errors.getvalue())
         self.assertIn("same key", errors.getvalue())
+
+    def test_deferred_records_are_retried_and_clear_degraded_maintenance(self):
+        with patch.object(self.service, "maintain", side_effect=[{"deferred": 1}, {"deferred": 0}]) as maintain:
+            self.service.start()
+            deadline = time.monotonic() + 2
+            while not self.service.maintenance_deferred and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertTrue(self.service.maintenance_deferred)
+            self.assertEqual(maintain.call_count, 1)
+            self.assertTrue(self.service.available)
+            self.service.last_maintenance -= 61
+            self.service.wake.set()
+            while self.service.maintenance_deferred and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertFalse(self.service.maintenance_deferred)
+            self.assertEqual(maintain.call_count, 2)
