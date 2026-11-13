@@ -21,6 +21,7 @@ from proofbeak.models import canonical, fingerprint
 from proofbeak.lifecycle import EvidenceLifecycle
 from proofbeak.observer import OBSERVER_VERSION
 from proofbeak.packs import builtins
+from proofbeak.recovery import file_lock
 
 
 class ServiceError(Exception):
@@ -39,6 +40,8 @@ class Tenant:
 class TrialService(EvidenceLifecycle):
     def __init__(self, root, tenants, pending_limit=8, executor=None):
         self.root = Path(root).resolve()
+        if (self.root / ".restore-incomplete").exists():
+            raise ValueError("state restore is incomplete")
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         if self.root.stat().st_mode & 0o077:
             raise ValueError("service state directory must be private to its owner (mode 0700)")
@@ -62,20 +65,29 @@ class TrialService(EvidenceLifecycle):
         self.stop = Event()
         self.wake = Event()
         self.last_maintenance = 0
-        with self._db() as db:
-            db.execute("""CREATE TABLE IF NOT EXISTS jobs (
-                id TEXT PRIMARY KEY, tenant TEXT NOT NULL, client_key TEXT NOT NULL,
-                request_hash TEXT NOT NULL, request TEXT NOT NULL, context TEXT NOT NULL,
-                state TEXT NOT NULL, result TEXT, reason TEXT, recovery TEXT,
-                created_at TEXT NOT NULL, UNIQUE(tenant, client_key))""")
-        self._init_lifecycle()
+        self.maintenance_deferred = False
+        self.coordinator_failure = None
+        # Schema initialization must respect the same offline/worker exclusion as snapshots.
+        try:
+            with file_lock(self.root / "worker.lock"):
+                with self._db() as db:
+                    db.execute("""CREATE TABLE IF NOT EXISTS jobs (
+                        id TEXT PRIMARY KEY, tenant TEXT NOT NULL, client_key TEXT NOT NULL,
+                        request_hash TEXT NOT NULL, request TEXT NOT NULL, context TEXT NOT NULL,
+                        state TEXT NOT NULL, result TEXT, reason TEXT, recovery TEXT,
+                        created_at TEXT NOT NULL, UNIQUE(tenant, client_key))""")
+                self._init_lifecycle()
+        except ValueError as error:
+            if str(error) == "offline_state_required":
+                raise RuntimeError("another service worker owns this state directory") from None
+            raise
 
     @contextmanager
     def _db(self):
         db = sqlite3.connect(self.database, timeout=10)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA secure_delete=ON")
         try:
+            db.execute("PRAGMA secure_delete=ON")
             with db:
                 yield db
         finally:
@@ -93,14 +105,20 @@ class TrialService(EvidenceLifecycle):
         self.lock = lock
         # Holding the process lock establishes that these jobs have no surviving owner.
         # Never replay them: a provider write might have completed before the process died.
-        with self._db() as db:
-            db.execute("UPDATE jobs SET state='interrupted', reason='recovery_required' "
-                       "WHERE state='running'")
-        self.stop.clear()
-        self.executor.reset()
-        if background:
-            self.worker = Thread(target=self._loop, name="proofbeak-worker", daemon=False)
-            self.worker.start()
+        try:
+            with self._db() as db:
+                db.execute("UPDATE jobs SET state='interrupted', reason='recovery_required' "
+                           "WHERE state='running'")
+            self.stop.clear()
+            self.coordinator_failure = None
+            self.executor.reset()
+            if background:
+                self.worker = Thread(target=self._loop, name="proofbeak-worker", daemon=False)
+                self.worker.start()
+        except BaseException:
+            self.lock.close()
+            self.lock = None
+            raise
 
     def close(self):
         self.stop.set()
@@ -163,7 +181,7 @@ class TrialService(EvidenceLifecycle):
                                "evidence_level": a.evidence_level} for a in adapters]}
 
     def submit(self, tenant, spec, candidates, key):
-        if self.lock is None:
+        if not self.available:
             raise ServiceError("service_unavailable", 503)
         if not isinstance(key, str) or not 1 <= len(key) <= 128:
             raise ServiceError("invalid_idempotency_key", 422)
@@ -181,11 +199,19 @@ class TrialService(EvidenceLifecycle):
         request_hash = fingerprint({"request": json.loads(request), "context": context})
         with self._db() as db:
             db.execute("BEGIN IMMEDIATE")
+            # Deletion may commit while provider context is being validated. Check again
+            # under the same write transaction that reserves the key.
+            if db.execute("SELECT 1 FROM tombstones WHERE tenant=? AND key_hash=?",
+                          (tenant, fingerprint(key))).fetchone():
+                raise ServiceError("run_deleted", 410)
             row = db.execute("SELECT * FROM jobs WHERE tenant=? AND client_key=?", (tenant, key)).fetchone()
             if row:
                 if row["request_hash"] != request_hash:
                     raise ServiceError("idempotency_conflict", 409)
                 return {"run_id": row["id"], "state": row["state"]}
+            prefix = self.key_prefix(db)
+            if prefix and not key.startswith(prefix):
+                raise ServiceError("restore_key_prefix_required", 409)
             count = db.execute("SELECT COUNT(*) FROM jobs WHERE tenant=? "
                                "AND state IN ('queued','running')", (tenant,)).fetchone()[0]
             if count >= self.pending_limit:
@@ -306,7 +332,7 @@ class TrialService(EvidenceLifecycle):
             except (ValueError, OSError):
                 capabilities[name] = {"configured": False, "supported_trials": []}
         return {"packages": builtins().describe(), "providers": sorted(self.tenants[tenant].providers),
-                "provider_capabilities": capabilities}
+                "provider_capabilities": capabilities, "idempotency_key_prefix": self.key_prefix()}
 
     def process_next(self):
         if self.lock is None:
@@ -346,11 +372,31 @@ class TrialService(EvidenceLifecycle):
                         {"reason_code": reason})
         return True
 
+    @property
+    def available(self):
+        return self.lock is not None and not self.stop.is_set() and self.coordinator_failure is None \
+            and (self.worker is None or self.worker.is_alive())
+
     def _loop(self):
         while not self.stop.is_set():
-            if self.last_maintenance == 0 or time.monotonic() - self.last_maintenance > 3600:
-                self.maintain()
-                self.last_maintenance = time.monotonic()
-            if not self.process_next():
+            now = time.monotonic()
+            interval = 60 if self.maintenance_deferred else 3600
+            if self.last_maintenance == 0 or now - self.last_maintenance >= interval:
+                try:
+                    maintenance = self.maintain()
+                    self.maintenance_deferred = bool(maintenance.get("deferred", 0))
+                except (OSError, sqlite3.Error, ServiceError):
+                    # A temporary retention failure must not kill the dispatcher or
+                    # print potentially credential-bearing exception messages.
+                    self.maintenance_deferred = True
+                self.last_maintenance = now
+            try:
+                processed = self.process_next()
+            except Exception:
+                # A claim/result persistence error needs operator recovery, not replay.
+                # Fail readiness and new submissions without logging raw state/errors.
+                self.coordinator_failure = "coordinator_failed"
+                return
+            if not processed:
                 self.wake.wait(0.25)
                 self.wake.clear()

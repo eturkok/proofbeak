@@ -115,9 +115,8 @@ class ServiceTests(unittest.TestCase):
         self.error("run_still_active", lambda: self.service.cleanup("a", run_id))
 
     def test_second_worker_cannot_share_state_directory(self):
-        other = TrialService(self.root / "service", self.tenants)
         with self.assertRaisesRegex(RuntimeError, "another service worker"):
-            other.start(background=False)
+            TrialService(self.root / "service", self.tenants)
 
     def test_restart_does_not_replay_a_claimed_write(self):
         run_id = self.submit()

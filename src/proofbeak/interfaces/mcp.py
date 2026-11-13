@@ -88,7 +88,7 @@ def create_server(client):
 
     @server.tool(annotations=write, structured_output=True)
     def run_trial(test: dict, candidates: list[str], idempotency_key: str) -> dict[str, Any]:
-        """Queue a closed acceptance trial on allowed providers; reuse the key for a retry."""
+        """Queue a closed trial; reuse retry keys. New keys must use discovery's idempotency_key_prefix after restore."""
         return call("POST", "/runs", {"test": test, "candidates": candidates}, key=idempotency_key)
 
     @server.tool(annotations=read_only, structured_output=True)

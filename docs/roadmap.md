@@ -23,6 +23,19 @@ rootless runtime image. See [release notes](../CHANGELOG.md).
 The unchecked human-pilot gates below remain open. Shipping the MVP does not establish
 onboarding speed, adoption, two-team reuse demand or improved agent decisions.
 
+## Stable single-coordinator release 0.4.0
+
+Technical hardening includes the deletion/retry race fix, bounded operation bookkeeping,
+coordinator failure handling, deferred-maintenance retries, private atomic CLI exports,
+offline configuration checks and verified snapshots with restore-key fencing. The
+qualification suite exercises the actual 0.3.0 implementation, ordinary upgrade, restoration,
+60 filesystem trials and 30 two-provider HTTP trials with eight simultaneous submissions/key.
+Existing REST/MCP, provider, container, Helm, persistent restart and network-policy suites
+remain mandatory. See [qualification details](stability.md) and [recovery operations](state-recovery.md).
+
+This release qualifies controlled single-coordinator operation. The human-pilot and
+demand-driven expansion gates below remain open.
+
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
 | Foundation | First 12 h | Closed fixture, CLI, real self-hosted observations, two real user selection questions | `feat/storage-provider-comparison` |
@@ -32,6 +45,9 @@ onboarding speed, adoption, two-team reuse demand or improved agent decisions.
 | User pilot | Last 12 h | Three developers; measured decision quality, false positives, adoption, and a continuation decision | Separate scoped branches |
 
 ## Foundation status
+
+Technical release scope and qualification are tracked in
+[stability scope and release checks](stability.md). Human-pilot gates remain independently open.
 
 - [x] Fixed four-occurrence Istanbul fixture and explicit acceptance conditions.
 - [x] Dependency-free local CLI and deterministic observer.

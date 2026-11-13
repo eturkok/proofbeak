@@ -6,6 +6,8 @@ import json
 import os
 import re
 import secrets
+import sqlite3
+import sys
 from pathlib import Path
 
 from proofbeak.adapters.filesystem import FilesystemAdapter
@@ -14,6 +16,7 @@ from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.models import keys
+from proofbeak.recovery import RecoveryError
 from proofbeak.executor import SubprocessExecutor, WorkerLimits
 from proofbeak.service import Tenant, TrialService
 
@@ -53,23 +56,57 @@ def credential_variables(settings, *names):
             raise ValueError("invalid credential environment variable")
 
 
-def load_service(config_path):
-    path = Path(config_path)
-    if path.stat().st_size > 65536:
+def read_json_file(path):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate configuration key")
+            result[key] = value
+        return result
+
+    with Path(path).open("rb") as stream:
+        content = stream.read(65537)
+    if len(content) > 65536:
         raise ValueError("server configuration exceeds 64 KiB")
-    config = json.loads(path.read_text())
+    return json.loads(content, object_pairs_hook=unique)
+
+
+def configured_service(config_path):
+    config = read_json_file(config_path)
+    if not isinstance(config, dict):
+        raise ValueError("server configuration must be an object")
     keys(config, {"state_dir", "tenants"} | ({"execution"} if "execution" in config else set()),
          "server configuration")
+    if not isinstance(config["state_dir"], str) or not config["state_dir"] \
+            or not isinstance(config["tenants"], list) or not 1 <= len(config["tenants"]) <= 32:
+        raise ValueError("invalid state directory or tenant list")
     root = Path(config["state_dir"]).resolve()
-    tenants = []
+    tenants, identities, digests = [], set(), set()
     for entry in config["tenants"]:
         keys(entry, {"id", "token_sha256", "providers"}, "tenant")
         if not isinstance(entry["id"], str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", entry["id"]):
             raise ValueError("invalid tenant id")
+        if entry["id"] in identities or not isinstance(entry["token_sha256"], str) \
+                or not re.fullmatch(r"[a-f0-9]{64}", entry["token_sha256"]) or entry["token_sha256"] in digests \
+                or not isinstance(entry["providers"], dict) or not 1 <= len(entry["providers"]) <= 32:
+            raise ValueError("invalid tenant credential or provider allowlist")
+        identities.add(entry["id"])
+        digests.add(entry["token_sha256"])
         providers = {name: provider_factory(name, settings, root, entry["id"])
                      for name, settings in entry["providers"].items()}
         tenants.append(Tenant(entry["id"], entry["token_sha256"], providers))
-    limits = WorkerLimits(**config.get("execution", {}))
+    if not isinstance(config.get("execution", {}), dict):
+        raise ValueError("invalid execution limits")
+    try:
+        limits = WorkerLimits(**config.get("execution", {}))
+    except TypeError:
+        raise ValueError("invalid execution limits") from None
+    return root, tenants, limits
+
+
+def load_service(config_path):
+    root, tenants, limits = configured_service(config_path)
     return TrialService(root, tenants, executor=SubprocessExecutor(limits))
 
 
@@ -91,7 +128,44 @@ def main(argv=None):
     purge = commands.add_parser("purge-tenant", help="erase a tenant's stored data after resource cleanup")
     purge.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
     purge.add_argument("--tenant", required=True)
+    check = commands.add_parser("check", help="validate configuration without network requests or state creation")
+    check.add_argument("--config", type=Path, default=Path(".proofbeak/server.json"))
+    check.add_argument("--require-providers", action="store_true")
+    snapshot = commands.add_parser("backup", help="snapshot state while the service and workers are stopped")
+    snapshot.add_argument("--state", type=Path, default=Path(".proofbeak/server"))
+    snapshot.add_argument("--output", type=Path, required=True)
+    restore = commands.add_parser("restore", help="restore verified state into a new directory; never replay queued work")
+    restore.add_argument("--snapshot", type=Path, required=True)
+    restore.add_argument("--state", type=Path, required=True)
     args = parser.parse_args(argv)
+    if args.command in {"backup", "restore", "check"}:
+        try:
+            if args.command == "check":
+                _, tenants, _ = configured_service(args.config)
+                providers = {}
+                for tenant in tenants:
+                    providers[tenant.id] = {}
+                    for name, factory in tenant.providers.items():
+                        try:
+                            factory()
+                            providers[tenant.id][name] = True
+                        except (ValueError, TypeError, OSError):
+                            providers[tenant.id][name] = False
+                ready = all(value for group in providers.values() for value in group.values())
+                print(json.dumps({"valid": True, "providers_configured": ready, "providers": providers}))
+                return 0 if ready or not args.require_providers else 2
+            from proofbeak.recovery import backup, restore as restore_state
+
+            result = backup(args.state, args.output) if args.command == "backup" \
+                else restore_state(args.snapshot, args.state)
+            print(json.dumps(result))
+            return 0
+        except (ValueError, TypeError, KeyError, OSError, RecursionError, sqlite3.Error) as error:
+            code = error.code if isinstance(error, RecoveryError) else (
+                "destination_exists" if isinstance(error, FileExistsError) else "state_operation_failed")
+            print(json.dumps({"error": "configuration_check_failed" if args.command == "check"
+                              else code, "type": type(error).__name__}), file=sys.stderr)
+            return 3
     if args.command == "init":
         if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", args.tenant):
             parser.error("invalid tenant id")
@@ -100,7 +174,7 @@ def main(argv=None):
             try:
                 if args.providers.stat().st_size > 65536:
                     raise ValueError("oversized provider map")
-                providers = json.loads(args.providers.read_text())
+                providers = read_json_file(args.providers)
                 if not isinstance(providers, dict) or not providers or len(providers) > 32:
                     raise ValueError("invalid provider map")
                 for name, settings in providers.items():

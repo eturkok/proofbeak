@@ -12,9 +12,11 @@ deployment. Kubernetes and OpenShift are optional hosting choices. No OpenShift 
 CRD, SDK, subscription, or platform account is required. Calico is used to verify network
 policy in CI; it is not a Proofbeak runtime dependency.
 
-Version **0.3.0** is the first integrated MVP: CLI, REST/MCP, evidence lifecycle and optional
-container/Helm deployment. Real-provider and protocol checks use synthetic test data;
-human onboarding, adoption and decision-quality evaluation remain open pilot work.
+Version **0.4.0** is the stable release for controlled single-coordinator use: CLI, REST/MCP,
+evidence lifecycle, verified state recovery and optional container/Helm deployment. Upgrade
+qualification uses the actual 0.3.0 implementation. Real-provider and repeated-use checks
+use synthetic test data; human onboarding, adoption and decision-quality evaluation remain
+open pilot work. See [stability scope and qualification](docs/stability.md).
 See [release notes](CHANGELOG.md) and the [delivery roadmap](docs/roadmap.md).
 Development happens on scoped branches and reaches `main` through verified pull requests.
 
@@ -49,6 +51,8 @@ write response is never treated as evidence that the condition passed.
 
 Cleanup status is separate from the verdict. A passing trial with failed cleanup exits with an
 operational error and leaves a durable cleanup record.
+CLI databases, lock files and exported reports use owner-only permissions. JSON/HTML exports
+replace complete files atomically; both formats must use different output paths.
 
 ## Registered trial packages
 
@@ -229,6 +233,8 @@ Supply the one-time issued API key to your client/MCP host locally. See
 binds to loopback by default and runs bounded worker subprocesses, cancellation, and crash recovery.
 See [worker lifecycle and limits](docs/worker-processes.md) and the
 [container and Helm deployment package](docs/deployment.md). Production identity remains pending.
+Use [configuration checks and verified state recovery](docs/state-recovery.md) for offline
+backup/restore and the post-restore protection against unintended retries.
 Core CLI usage remains dependency-free.
 
 ## Next increments

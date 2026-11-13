@@ -29,6 +29,12 @@ apply network controls outside the API. The container explicitly sets `--host 0.
 the Compose host port remains loopback-only and the Helm Service is ClusterIP. See
 [deployment configuration](deployment.md).
 
+Readiness and new submissions fail closed when the coordinator has stopped. A dispatch or
+result-persistence failure reports the safe `coordinator_failed` reason; the operator repairs
+storage and restarts the service, then inspects interrupted runs without replaying writes.
+Transient retention errors retry after sixty seconds while trial dispatch continues;
+`/health` reports `maintenance: deferred` until maintenance succeeds. No raw error is exposed.
+
 ## REST contract
 
 | Method and path | Behavior |
@@ -105,6 +111,12 @@ An interruption may have occurred after the provider accepted a write. Use the t
 cleanup route/tool to reconcile the recorded disposable resources. Cleanup progress is
 returned in `cleanup_recovery`; historical trial observations are not rewritten. A missing
 or ambiguous provider resource stays unresolved when its ownership/state cannot be proven.
+
+After restoring an older snapshot, discovery includes an `idempotency_key_prefix` for new
+keys. Historical keys present in the snapshot still retrieve their original run. Unknown
+keys must use the new prefix or receive 409 `restore_key_prefix_required`; this prevents
+requests missing from the snapshot from being silently replayed. Restore never resumes
+queued/running provider work. See [state recovery](state-recovery.md).
 
 Pending context is revalidated before execution. Package, provider-profile, or executor-policy drift stops the
 job without making a new provider write. Shutdown terminates owned workers and preserves

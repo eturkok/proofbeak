@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.engine import recover_cleanup, run_trial
 from proofbeak.packs import builtins
-from proofbeak.report import render_html
+from proofbeak.report import render_html, write_private
 from proofbeak.store import IdempotencyConflict, Store
 
 
@@ -92,14 +93,18 @@ def main(argv=None):
         if args.command == "validate":
             print(f"Valid: {pack.id} (package {pack.version})")
             return 0
+        if args.html and args.output.resolve() == args.html.resolve():
+            raise ValueError("JSON and HTML output paths must differ")
+        protected = {args.spec.resolve(), args.db.resolve(), args.db.with_suffix(args.db.suffix + ".lock").resolve()}
+        protected.update(Path(str(args.db) + suffix).resolve() for suffix in ("-journal", "-wal", "-shm"))
+        if any(path.resolve() in protected for path in (args.output, args.html) if path is not None):
+            raise ValueError("report output must not replace trial or state files")
         adapters = adapters_for(args.candidate)
         store = Store(args.db)
         report = run_trial(spec, adapters, store, args.key)
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2) + "\n")
+        write_private(args.output, json.dumps(report, indent=2) + "\n")
         if args.html:
-            args.html.parent.mkdir(parents=True, exist_ok=True)
-            args.html.write_text(render_html(report))
+            write_private(args.html, render_html(report))
         print(f'Run {report["run_id"]} · {report["state"]}')
         for candidate in report["candidates"]:
             print(f'{candidate["provider"]}: {candidate["verdict"]} '
@@ -113,6 +118,9 @@ def main(argv=None):
     except IdempotencyConflict as exc:
         print(f"Conflict: {exc}", file=sys.stderr)
         return 3
+    except sqlite3.Error:
+        print("State unavailable; repair the store and retry with the same key.", file=sys.stderr)
+        return 2
     except (ValueError, OSError) as exc:
         print(f"Invalid input: {exc}", file=sys.stderr)
         return 3

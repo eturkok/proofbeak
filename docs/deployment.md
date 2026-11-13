@@ -1,5 +1,9 @@
 # Container and Helm deployment
 
+Version 0.4.0 is qualified for the controlled single-coordinator scope described in
+[stability checks](stability.md). Before upgrading, stop the coordinator and take a verified
+[state snapshot](state-recovery.md); restore and ordinary upgrade have different retry rules.
+
 This package runs the REST coordinator and its bounded worker subprocesses in one non-root
 container. The agent runtime and MCP host stay outside. SQLite requires one writer and a
 local persistent volume; the chart rejects multiple replicas and uses a Recreate update.
