@@ -8,6 +8,28 @@
   independent mutation-request journals and unchanged same-key/restart retrievals. This is
   technical qualification, not human pilot or external-agent decision-quality evidence.
 
+## 0.6.0 — 2026-11-13
+
+Distribution preparation: installable Python wheel/source archive, the existing REST/MCP
+commands and a versioned container built from the tested wheel. Registry publication follows a
+main version increase or explicit workflow run after publisher authorization; this entry does not assert
+that PyPI or GHCR already hosts the version.
+
+- Add `proofbeak example --output scenario.json` so an installed package can create an editable
+  starting definition without repository example files. Creation is private and atomic;
+  existing files and symlinks are refused without running a provider trial.
+- Add package URLs, SPDX license-file metadata and a curated source manifest excluding
+  local state, credentials and generated reports.
+- Build wheel/source artifacts once, verify metadata and hashes, then run fresh core and
+  actual REST/MCP/worker installations outside the checkout on Python 3.11–3.14.
+- Build a Linux amd64 container from that wheel and locked runtime dependencies, exercise
+  rootless/read-only/offline operation and export the tested image archive with checksums.
+- Add explicit main-only PyPI OIDC and GHCR publication jobs, gated on the installed-artifact
+  checks. Main version increases start a release; manual publication requires a matching
+  version input. PRs and main commits without a version increase do not publish.
+- Package/application 0.6.0; Helm chart 0.4.0. Existing package/adapter/evidence schemas and
+  single-coordinator state semantics are unchanged.
+
 ## 0.5.1 — 2026-11-13
 
 Make user-defined scenarios easier to repair before execution. Validation errors now include

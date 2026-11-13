@@ -2,7 +2,7 @@
 
 **Check whether a service meets your requirements. Decide with evidence.**
 
-[English](README.md) · [Türkçe](README.tr.md)
+[English](https://github.com/eturkok/proofbeak/blob/main/README.md) · [Türkçe](https://github.com/eturkok/proofbeak/blob/main/README.tr.md)
 
 Proofbeak is a self-hosted acceptance-testing and evidence service for developers and AI
 agents. Define the behavior your application needs, choose candidate services, and run the
@@ -35,9 +35,10 @@ From a checkout, use Python 3.11+ on Linux or macOS. This local example needs no
 Python packages, external account or model service:
 
 ```bash
-PYTHONPATH=src python3 -m proofbeak validate examples/scenario.delete_and_preserve.json \
+PYTHONPATH=src python3 -m proofbeak example --output scenario.json
+PYTHONPATH=src python3 -m proofbeak validate scenario.json \
   --candidate scenario:filesystem
-PYTHONPATH=src python3 -m proofbeak run examples/scenario.delete_and_preserve.json \
+PYTHONPATH=src python3 -m proofbeak run scenario.json \
   --candidate scenario:filesystem --key first-trial \
   --output reports/first-trial.json --html reports/first-trial.html
 ```
@@ -46,7 +47,7 @@ Open `reports/first-trial.html` to inspect the result. The example uses disposab
 Copy the JSON and edit it for your condition; use a new key for a changed definition.
 Repeating the same request and key retrieves the original run.
 
-Follow the [scenario guide](docs/scenarios.md) to author a definition and apply it to
+Follow the [scenario guide](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md) to author a definition and apply it to
 multiple configured services.
 
 ## Interfaces and scope
@@ -64,11 +65,12 @@ and operating limits.
 
 ## Documentation
 
-- [Scenarios and examples](docs/scenarios.md)
-- [REST and MCP integration](docs/agent-interfaces.md)
-- [Connectors and extension contracts](docs/trial-packs.md)
-- [Evidence history and reuse](docs/evidence-lifecycle.md)
-- [Deployment](docs/deployment.md) · [Backup and recovery](docs/state-recovery.md)
-- [Validation results](docs/acceptance-evaluation.md) · [Release notes](CHANGELOG.md)
+- [Installation and package artifacts](https://github.com/eturkok/proofbeak/blob/main/docs/installation.md)
+- [Scenarios and examples](https://github.com/eturkok/proofbeak/blob/main/docs/scenarios.md)
+- [REST and MCP integration](https://github.com/eturkok/proofbeak/blob/main/docs/agent-interfaces.md)
+- [Connectors and extension contracts](https://github.com/eturkok/proofbeak/blob/main/docs/trial-packs.md)
+- [Evidence history and reuse](https://github.com/eturkok/proofbeak/blob/main/docs/evidence-lifecycle.md)
+- [Deployment](https://github.com/eturkok/proofbeak/blob/main/docs/deployment.md) · [Backup and recovery](https://github.com/eturkok/proofbeak/blob/main/docs/state-recovery.md)
+- [Validation results](https://github.com/eturkok/proofbeak/blob/main/docs/acceptance-evaluation.md) · [Release notes](https://github.com/eturkok/proofbeak/blob/main/CHANGELOG.md)
 
-[Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Apache-2.0](LICENSE)
+[Contributing](https://github.com/eturkok/proofbeak/blob/main/CONTRIBUTING.md) · [Architecture](https://github.com/eturkok/proofbeak/blob/main/docs/architecture.md) · [Roadmap](https://github.com/eturkok/proofbeak/blob/main/docs/roadmap.md) · [Apache-2.0](https://github.com/eturkok/proofbeak/blob/main/LICENSE)

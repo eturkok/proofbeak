@@ -1,0 +1,229 @@
+name: Distribution and publishing
+
+on:
+  pull_request:
+    paths: [pyproject.toml, MANIFEST.in, README.md, LICENSE, requirements-runtime.lock, 'src/**', 'tests/**', 'deploy/Dockerfile.distribution', '.github/workflows/release.yml']
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Exact package version; required when publishing'
+        type: string
+        required: false
+      publish_pypi:
+        description: 'Publish the tested Python files to PyPI (Trusted Publisher must be configured)'
+        type: boolean
+        default: false
+      publish_image:
+        description: 'Publish the tested image to ghcr.io'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: distribution-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      publish_pypi: ${{ steps.metadata.outputs.publish_pypi }}
+      publish_image: ${{ steps.metadata.outputs.publish_image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Link the main distribution run
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python tests/distribution_status.py pending
+      - id: metadata
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+          PUBLISH_PYPI: ${{ inputs.publish_pypi }}
+          PUBLISH_IMAGE: ${{ inputs.publish_image }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: python tests/release_gate.py
+      - run: python -m pip install 'build>=1,<2' 'twine>=6,<7'
+      - run: python -m build --outdir release/dist
+      - run: python -m twine check --strict release/dist/*
+      - run: python tests/distribution_smoke.py inspect --dist release/dist --output release/manifest.json
+      - name: Record PyPI name status
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from urllib.error import HTTPError
+          from urllib.request import urlopen
+          try:
+              with urlopen('https://pypi.org/pypi/proofbeak/json', timeout=15) as response:
+                  data = json.load(response)
+              status = {'exists': True, 'latest_version': data['info']['version'], 'project_urls': data['info'].get('project_urls')}
+          except HTTPError as error:
+              if error.code != 404:
+                  raise
+              status = {'exists': False, 'note': 'No project at check time; this does not reserve the name.'}
+          Path('release/pypi-status.json').write_text(json.dumps(status, indent=2) + '\n')
+          print(json.dumps(status))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-distributions
+          path: release/
+          if-no-files-found: error
+          retention-days: 14
+
+  installed:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: release
+      - run: python tests/distribution_smoke.py core --dist release/dist --output reports/installed-core.json
+      - run: python tests/distribution_smoke.py agents --dist release/dist --output reports/installed-agents.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installed-package-${{ matrix.python }}
+          path: reports/installed-*.json
+          if-no-files-found: error
+          retention-days: 14
+
+  image:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: release
+      - run: docker build -f deploy/Dockerfile.distribution --build-arg PROOFBEAK_VERSION=${{ needs.build.outputs.version }} --tag proofbeak:distribution .
+      - run: python tests/container_smoke.py proofbeak:distribution
+      - name: Export the tested image
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          mkdir -p release-image
+          docker save proofbeak:distribution | gzip > "release-image/proofbeak-${VERSION}.tar.gz"
+          python - <<'CODE'
+          import hashlib, os
+          from pathlib import Path
+          root = Path('release-image')
+          path = root / ('proofbeak-' + os.environ['VERSION'] + '.tar.gz')
+          with path.open('rb') as stream:
+              digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+          (root / 'SHA256SUMS').write_text(digest + '  ' + path.name + '\n')
+          CODE
+          cp reports/container-smoke.json release-image/container-smoke.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tested-container-image
+          path: release-image/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish-pypi:
+    if: github.ref == 'refs/heads/main' && needs.build.outputs.publish_pypi == 'true'
+    needs: [build, installed, image]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/proofbeak
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: release
+      - name: Verify the tested distribution bytes
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          manifest = json.loads(Path('release/manifest.json').read_text())
+          for name, metadata in manifest['artifacts'].items():
+              path = Path('release/dist') / name
+              assert path.name == name and hashlib.sha256(path.read_bytes()).hexdigest() == metadata['sha256']
+          PY
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: release/dist/
+
+  publish-image:
+    if: github.ref == 'refs/heads/main' && needs.build.outputs.publish_image == 'true'
+    needs: [build, installed, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tested-container-image
+          path: release-image
+      - name: Verify and load the tested image
+        working-directory: release-image
+        run: |
+          sha256sum --check SHA256SUMS
+          docker load --input proofbeak-${{ needs.build.outputs.version }}.tar.gz
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish versioned image without replacing a different release
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess
+          image = 'ghcr.io/' + os.environ['GITHUB_REPOSITORY'].lower()
+          versioned = image + ':' + os.environ['VERSION']
+          existing = subprocess.run(['docker', 'manifest', 'inspect', versioned], text=True, capture_output=True)
+          if existing.returncode == 0:
+              local = subprocess.check_output(['docker', 'inspect', '--format={{.Id}}', 'proofbeak:distribution'], text=True).strip()
+              assert json.loads(existing.stdout).get('config', {}).get('digest') == local, 'version tag already points to a different image'
+          else:
+              assert any(reason in existing.stderr.lower() for reason in ('manifest unknown', 'no such manifest', 'not found')), 'registry preflight failed'
+          for tag in (versioned, image + ':sha-' + os.environ['GITHUB_SHA']):
+              subprocess.run(['docker', 'tag', 'proofbeak:distribution', tag], check=True)
+              subprocess.run(['docker', 'push', tag], check=True)
+          PY
+
+  status:
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, installed, image, publish-pypi, publish-image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: python tests/distribution_status.py complete

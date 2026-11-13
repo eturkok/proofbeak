@@ -9,7 +9,7 @@ from pathlib import Path
 from proofbeak.recovery import sync_directory
 
 
-def write_private(path, content):
+def write_private(path, content, *, overwrite=True):
     """Publish a complete owner-only report; failed replacement preserves the previous export."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -19,7 +19,10 @@ def write_private(path, content):
             stream.write(content)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, path)
+        if overwrite:
+            os.replace(temporary, path)
+        else:
+            os.link(temporary, path)  # Atomic publication; existing files and symlinks are refused.
         sync_directory(path.parent)
     finally:
         Path(temporary).unlink(missing_ok=True)
