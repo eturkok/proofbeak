@@ -97,6 +97,12 @@ envelope, such as `["json","items"]` or `["status"]`. MCP paths start at structu
 output (or one JSON text result). Missing projected fields remain missing and cannot pass a
 condition. Output schemas are checked before a result becomes an observation.
 
+For APIs that return structured model output inside a JSON string, `decode_json` lists
+projected fields to parse as JSON before checking them. For example, project `answer` from
+`["json","choices",0,"message","content"]` and set `"decode_json":["answer"]` to apply
+an object schema to that model response. Invalid JSON and duplicate keys remain invalid
+observations. Other fields stay unchanged.
+
 Keep credentials in the operator process's environment. `connection.secret_env` maps a
 private field to its environment variable name: PostgreSQL uses `dsn`; Redis uses `password`
 and optionally `username`; REST uses header names such as `Authorization`; MCP stdio uses

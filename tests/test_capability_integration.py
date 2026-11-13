@@ -195,6 +195,12 @@ class CapabilityIntegrationTests(unittest.TestCase):
             spec = {'id': 'scenario.v2', 'name': kind + ' contract', 'fixture': {}, 'setup': [], 'steps': [],
                 'observe': [{'id': 'result', 'op': op, 'args': arguments}], 'require': [], 'expect': [{'name': 'quality', **condition}]}
             self.check_row(run_trial(spec, [CapabilityAdapter(build_connector('capability:' + kind, profile))], self.store, kind))
+        profile['operations']['model.generate']['binding']['decode_json'] = ['answer']
+        profile['operations']['model.generate']['binding']['body']['response_format'] = {'type': 'json_object'}
+        spec['expect'] = [{'name': 'structured_output', 'actual': ['after', 'result', 'answer'], 'op': 'schema',
+            'value': {'type': 'object', 'required': ['answer', 'words'], 'properties': {
+                'answer': {'const': 'hello'}, 'words': {'type': 'integer', 'minimum': 1}}, 'additionalProperties': False}}]
+        self.check_row(run_trial(spec, [CapabilityAdapter(build_connector('capability:structured', profile))], self.store, 'structured-model'))
 
     def test_actual_proofbeak_mcp_drives_capability_through_api_and_worker(self):
         token = 'a' * 40

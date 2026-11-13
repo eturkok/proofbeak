@@ -83,7 +83,8 @@ class CapabilityHandler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
         if self.path == '/v1/chat/completions':
             prompt = body['messages'][-1]['content']
-            return self.respond(200, {'choices': [{'message': {'content': 'fixture echo: ' + prompt}}],
+            content = json.dumps({'answer': prompt, 'words': len(prompt.split())}) if body.get('response_format', {}).get('type') == 'json_object' else 'fixture echo: ' + prompt
+            return self.respond(200, {'choices': [{'message': {'content': content}}],
                                       'usage': {'prompt_tokens': len(prompt.split()), 'completion_tokens': len(prompt.split()) + 2}})
         self.respond(404, {})
 

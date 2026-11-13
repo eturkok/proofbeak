@@ -41,8 +41,11 @@ class RESTConnector(ScopedConnector):
         self.transport = Transport(timeout=5, max_calls=256, max_bytes=65536)
         for definition in self.catalog.operations.values():
             binding = definition["binding"]
-            if set(binding) - {"method", "path", "body", "query", "project", "statuses"}:
+            if set(binding) - {"method", "path", "body", "query", "project", "statuses", "decode_json"}:
                 raise ValueError("unknown HTTP operation binding")
+            decode = binding.get("decode_json", [])
+            if not isinstance(decode, list) or len(decode) > 16 or any(not isinstance(key, str) for key in decode):
+                raise ValueError("decode_json must name bounded output fields")
             method, path = binding.get("method"), binding.get("path", "")
             if method not in {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"} or not isinstance(path, str) or \
                     not path.startswith("/") or path.startswith("//") or len(path) > 512 or \
@@ -106,7 +109,16 @@ class RESTConnector(ScopedConnector):
                     projected[key] = resolve({"ref": parts}, result)
                 except ProviderError:
                     pass
-            return projected
+            result = projected
+        for key in binding.get("decode_json", []):
+            if key in result:
+                try:
+                    if not isinstance(result[key], str):
+                        raise ValueError("JSON text is required")
+                    result[key] = json.loads(result[key], object_pairs_hook=unique)
+                    canonical(result[key])
+                except (ValueError, RecursionError):
+                    raise ProviderError("invalid_observation") from None
         return result
 
 
