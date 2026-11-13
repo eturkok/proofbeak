@@ -148,3 +148,8 @@ non-root with a read-only rootfs. The network-policy-smoke.json report is upload
 other deployment evidence. A passing test covers this CNI and these IPv4 TCP paths; it does
 not validate OpenShift admission, another CNI, IPv6, DNS policies, provider HTTPS allowlists,
 or network separation between tenants/workers sharing the same API pod.
+
+The complete deployment checks, including both unselected-destination/port denials, passed in
+[CI run 43375288148](https://github.com/eturkok/proofbeak/actions/runs/43375288148).
+The corresponding core, real Radicale and actual REST/MCP checks passed in
+[Trials run 43375288158](https://github.com/eturkok/proofbeak/actions/runs/43375288158).

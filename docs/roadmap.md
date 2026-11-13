@@ -77,7 +77,7 @@ Radicale JSON/HTML evidence as the `radicale-trial-evidence` artifact for seven 
 - [x] Add an actual pod replacement test for persistent evidence and idempotency.
 - [x] Run the restart verification in CI (run 43316814424).
 - [x] Add actual ingress/egress probes with positive controls on Calico.
-- [ ] Run the policy-enforcement probes and preserve their report.
+- [x] Run the policy-enforcement probes and preserve their report (CI run 43375288148).
 
 ## Pilot decision gates
 
