@@ -52,6 +52,11 @@ still apply. GHCR publication uses the workflow's scoped `GITHUB_TOKEN`, not a p
 Version and commit tags are published without a moving `latest` alias. A different existing
 versioned image is refused; Python versions already published cannot be replaced.
 
+A separate `verify-pypi` job checks the public version metadata against every tested file
+digest, installs the exact version from PyPI in a new venv, and runs a real filesystem trial.
+If only this verification fails, rerun that job rather than uploading the version again.
+The image job also pulls its published tag and checks it against the tested image identity.
+
 If only a publisher job fails (for example, trust was not configured), correct the external
 setting and rerun that failed job with its original immutable artifacts. Do not silently
 rebuild different bytes under a version already partly or fully published.
@@ -65,3 +70,6 @@ rebuild different bytes under a version already partly or fully published.
 
 Publishing is separate from changing repository visibility, enabling remote SSO or operating
 a hosted service. The current single-coordinator deployment scope remains unchanged.
+The repository is currently private. Publishing the wheel/source archive does not make the
+GitHub repository or its issue tracker public; GitHub documentation links still require
+repository access. The source archive includes the documentation for offline reading.

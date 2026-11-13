@@ -11,7 +11,7 @@ def main():
     if sys.argv[1] == "complete":
         jobs = json.loads(os.environ["NEEDS_JSON"])
         mandatory = all(jobs[name]["result"] == "success" for name in ("build", "installed", "image"))
-        published = all(jobs[name]["result"] in {"success", "skipped"} for name in ("publish-pypi", "publish-image"))
+        published = all(jobs[name]["result"] in {"success", "skipped"} for name in ("publish-pypi", "verify-pypi", "publish-image"))
         state = "success" if mandatory and published else "failure"
         description = "Distribution checks and selected publications completed" if state == "success" else "Distribution checks or publication failed"
     target = os.environ["GITHUB_SERVER_URL"] + "/" + os.environ["GITHUB_REPOSITORY"] + "/actions/runs/" + os.environ["GITHUB_RUN_ID"]

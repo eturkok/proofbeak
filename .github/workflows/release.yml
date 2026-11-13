@@ -173,6 +173,27 @@ jobs:
         with:
           packages-dir: release/dist/
 
+  verify-pypi:
+    if: github.ref == 'refs/heads/main' && needs.build.outputs.publish_pypi == 'true'
+    needs: [build, publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-distributions
+          path: release
+      - run: python tests/verify_pypi.py --manifest release/manifest.json --output reports/pypi-verification.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pypi-publication-verification
+          path: reports/pypi-verification.json
+          if-no-files-found: error
+          retention-days: 14
+
   publish-image:
     if: github.ref == 'refs/heads/main' && needs.build.outputs.publish_image == 'true'
     needs: [build, installed, image]
@@ -203,20 +224,25 @@ jobs:
           import json, os, subprocess
           image = 'ghcr.io/' + os.environ['GITHUB_REPOSITORY'].lower()
           versioned = image + ':' + os.environ['VERSION']
+          local = subprocess.check_output(['docker', 'inspect', '--format={{.Id}}', 'proofbeak:distribution'], text=True).strip()
           existing = subprocess.run(['docker', 'manifest', 'inspect', versioned], text=True, capture_output=True)
           if existing.returncode == 0:
-              local = subprocess.check_output(['docker', 'inspect', '--format={{.Id}}', 'proofbeak:distribution'], text=True).strip()
               assert json.loads(existing.stdout).get('config', {}).get('digest') == local, 'version tag already points to a different image'
           else:
               assert any(reason in existing.stderr.lower() for reason in ('manifest unknown', 'no such manifest', 'not found')), 'registry preflight failed'
           for tag in (versioned, image + ':sha-' + os.environ['GITHUB_SHA']):
               subprocess.run(['docker', 'tag', 'proofbeak:distribution', tag], check=True)
               subprocess.run(['docker', 'push', tag], check=True)
+          subprocess.run(['docker', 'pull', versioned], check=True)
+          installed = json.loads(subprocess.check_output(['docker', 'inspect', versioned], text=True))[0]
+          assert installed['Id'] == local
+          print('PROOFBEAK_IMAGE_PUBLISHED=' + json.dumps({'image': versioned, 'config_digest': local,
+              'repository_digests': installed['RepoDigests']}))
           PY
 
   status:
     if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [build, installed, image, publish-pypi, publish-image]
+    needs: [build, installed, image, publish-pypi, verify-pypi, publish-image]
     runs-on: ubuntu-latest
     permissions:
       contents: read
