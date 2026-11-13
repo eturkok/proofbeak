@@ -108,6 +108,11 @@ def configured_connector(name, settings, root, tenant):
             not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]{0,127}", value) for key, value in environment.items()):
         raise ValueError("invalid connector secret environment mapping")
     def make():
+        import importlib.util
+        if config.get("kind") == "postgres" and importlib.util.find_spec("psycopg") is None:
+            raise ValueError("install the postgres extra for this connector")
+        if config.get("kind") == "mcp" and importlib.util.find_spec("mcp") is None:
+            raise ValueError("install the connectors extra for MCP targets")
         secrets = {key: os.environ.get(value, "") for key, value in environment.items()}
         if any(not value for value in secrets.values()):
             raise ValueError("connector secret is unavailable")

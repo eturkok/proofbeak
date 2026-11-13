@@ -54,7 +54,7 @@ if __name__ == "__main__":
         token = secrets.token_urlsafe(32)
         config = {"state_dir": "/var/lib/proofbeak/state", "tenants": [{
             "id": "smoke", "token_sha256": hashlib.sha256(token.encode()).hexdigest(),
-            "providers": {"filesystem": {}}}]}
+            "providers": {"filesystem": {}, "capability:sqlite": {"kind":"sqlite","connection":{}}}}]}
         path = root / "config.json"
         path.write_text(json.dumps(config))
         run("kubectl", "create", "namespace", namespace)
