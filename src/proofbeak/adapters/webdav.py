@@ -17,7 +17,7 @@ PROPFIND = (b'<D:propfind xmlns:D="DAV:"><D:prop><D:resourcetype/>'
 
 
 class WebDAVAdapter:
-    version = "0.1.0"
+    version = "0.1.1"
     evidence_level = "provider_test_account"
     supported_trials = frozenset({"storage.put_same_key.v1"})
 
@@ -42,6 +42,8 @@ class WebDAVAdapter:
             self.evidence_level = "simulation"
         self.profile = {"endpoint": self.endpoint, "account_scope": fingerprint(username),
                         "provider_version": "unknown", "permissions": "owned_trial_collections",
+                        "write_precondition": "strong_etag_when_available_else_existing_object",
+                        "excluded_verified_metadata": OWNER,
                         "transport": "injected" if transport is not None else url.scheme}
         self.created, self.etags = set(), {}
 
@@ -145,13 +147,19 @@ class WebDAVAdapter:
             objects[name] = content_hash(response.body)
             if name == trial.key:
                 self.etags[resource.scope_id] = response.headers.get("etag")
-        return StorageSnapshot(objects, "webdav:propfind-and-independent-get", datetime.now(UTC).isoformat())
+        return StorageSnapshot(objects, "webdav:propfind-get-excluding-verified-owner-marker",
+                               datetime.now(UTC).isoformat())
 
     def apply(self, resource, trial):
         self._owned(resource)
         etag = self.etags.get(resource.scope_id)
-        if not isinstance(etag, str) or not re.fullmatch(r'"[^"\x00-\x1f\x7f]{1,256}"', etag):
-            raise ProviderError("etag_unavailable")
+        if etag is None or (isinstance(etag, str) and
+                            re.fullmatch(r'W/"[^"\x00-\x1f\x7f]{1,256}"', etag)):
+            # This package measures repeated key/content writes, not compare-and-swap.
+            # Preserve existence without pretending a weak validator protects concurrent updates.
+            etag = "*"
+        elif not isinstance(etag, str) or not re.fullmatch(r'"[^"\x00-\x1f\x7f]{1,256}"', etag):
+            raise ProviderError("invalid_etag")
         self._request(resource, "PUT", key=trial.key, body=trial.content.encode(),
             headers={"If-Match": etag, "Content-Type": "application/octet-stream"},
             allowed=(200, 201, 204))

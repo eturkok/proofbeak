@@ -1,5 +1,5 @@
 # Disposable integration fixture, not a Proofbeak runtime dependency.
-FROM httpd:2.4.71
+FROM httpd:2.4.71@sha256:07e4ec0094d8bca9765fae74ce33d2be5341884048f265ff9dc1d1177a4256c9
 RUN groupadd --gid 10001 proofbeak \
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin proofbeak \
     && htpasswd -bc /usr/local/apache2/conf/test-users proofbeak proofbeak-local-only \

@@ -21,7 +21,7 @@ changes reach `main` only through reviewed pull requests.
 ## The first question: repeat a file upload
 
 > Write the same file content to the same key again.
-> Keep exactly one visible object, the same key, and the same content.
+> Keep exactly one test-data object, the same key, and the same content.
 
 Proofbeak reads the baseline, repeats the write, then lists and reads the actual stored data.
 A successful
@@ -46,7 +46,7 @@ before a run or a resource is created.
 | Package | Acceptance condition | Available adapters |
 | --- | --- | --- |
 | `calendar.move_one.v1` | Move one weekly occurrence while preserving the other instances and durations. | Radicale; Google adapter awaiting live verification; labeled simulation controls |
-| `storage.put_same_key.v1` | Repeating a write to the same key preserves one visible object and the same content. | WsgiDAV and Apache WebDAV adapter; local filesystem reference |
+| `storage.put_same_key.v1` | Repeating a write to the same key preserves one test-data object and the same content. | WsgiDAV and Apache WebDAV adapter; local filesystem reference |
 
 ```bash
 PYTHONPATH=src python3 -m proofbeak packs

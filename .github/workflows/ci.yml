@@ -63,8 +63,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - run: python -m pip install -e '.[dev]' 'wsgidav==4.4.0' 'cheroot==11.1.2'
+      - run: python -m pip install -e '.[dev]'
       - run: docker build -f deploy/Dockerfile.webdav-apache --tag proofbeak-webdav-apache:test .
+      - run: docker build -f deploy/Dockerfile.webdav-wsgi --tag proofbeak-webdav-wsgi:test .
+      - run: docker compose -f compose.storage.yaml config --quiet
       - run: python tests/test_webdav_integration.py -v
         env:
           PROOFBEAK_REQUIRE_WEBDAV: '1'

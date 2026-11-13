@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.13-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
 RUN pip install --no-cache-dir 'wsgidav==4.4.0' 'cheroot==11.1.2' \
     && useradd --uid 10001 --create-home trial
 COPY deploy/webdav_wsgi.py /app/webdav_wsgi.py

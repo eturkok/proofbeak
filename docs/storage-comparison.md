@@ -1,6 +1,6 @@
 # Primary case: repeat a file write
 
-Acceptance question: write the same content to the same key again; keep exactly one visible
+Acceptance question: write the same content to the same key again; keep exactly one test-data
 object, its key and its content. This reuses storage.put_same_key.v1 and the generic engine.
 The baseline is independently listed/read after the initial write. After another write,
 PROPFIND and GET observe the actual service state; a PUT success response does not determine
@@ -56,13 +56,17 @@ CLI does not load that file automatically.
 
 ## Evidence and limits
 
-The first PUT creates the fixture. A strong ETag from the baseline GET guards the second PUT
-with If-Match; a concurrent modification or missing ETag yields inconclusive. These are two
-writes of the same key/content under observed preconditions, not replay of identical HTTP
-headers after a deliberately dropped response. No exact-once or crash-durability claim follows.
+The first PUT creates the fixture. The second PUT uses If-Match with a strong observed ETag
+when available, or If-Match: * when the ETag is weak/absent. The latter checks only that the
+object still exists; it does not protect against concurrent content changes. An invalid ETag
+or a rejected precondition yields inconclusive. The package measures two writes of the same
+key/content and their observed states; identical HTTP-header replay after a dropped response,
+exact-once execution, lost-update prevention and crash durability require other conditions.
 
-The observer counts visible stored files and checks their keys/content. The internal ownership
-marker is verified separately and excluded from the test object count. Hidden version histories,
+The observer counts listed test-data files and checks their keys/content. The internal ownership
+marker is a real metadata file verified separately and excluded from the test object count.
+Its name and the write-precondition policy are recorded in the adapter profile. Every other
+listed file is counted. Hidden version histories,
 cross-region durability, eventual consistency bounds and multi-writer semantics need other packages.
 Two services passing the same condition is a valid result; it does not establish a ranking or
 prove that either is better for an untested condition.
@@ -84,16 +88,16 @@ denial, ambiguous writes, ETag conflicts, invalid/foreign/traversal listings and
 
     PYTHONPATH=src python3 -m unittest discover -s tests -p test_webdav.py -v
 
-The mandatory CI job starts actual WsgiDAV 4.4.0 and Apache 2.4.71, executes the same ASCII and
+The mandatory CI job builds and starts actual WsgiDAV 4.4.0 and Apache 2.4.71 containers, executes the same ASCII and
 UTF-8 fixtures in bounded subprocesses, verifies idempotent retrieval and resource cleanup,
-and checks permission failures. JSON/HTML reports are stored as
+and checks permission failures. Image identities and fixture settings accompany the JSON/HTML reports as
 storage-provider-comparison-evidence. These are real provider observations over synthetic
 data, not a human pilot or a measured improvement in agent decisions.
 
-To run that job's integration locally, install the fixture dependencies and build the image:
+To run that job's integration locally, build both disposable fixture images:
 
-    python -m pip install 'wsgidav==4.4.0' 'cheroot==11.1.2'
     docker build -f deploy/Dockerfile.webdav-apache -t proofbeak-webdav-apache:test .
+    docker build -f deploy/Dockerfile.webdav-wsgi -t proofbeak-webdav-wsgi:test .
     PROOFBEAK_REQUIRE_WEBDAV=1 PYTHONPATH=src python3 tests/test_webdav_integration.py
 
 Primary references: [Apache mod_dav](https://httpd.apache.org/docs/2.4/en/mod/mod_dav.html),

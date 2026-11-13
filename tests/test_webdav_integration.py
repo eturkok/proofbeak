@@ -1,12 +1,9 @@
 """Actual WsgiDAV and Apache round trips; no cloud account and no protocol mock."""
 
-import importlib.util
 import json
 import os
 import shutil
-import socket
 import subprocess
-import sys
 import tempfile
 import time
 import unittest
@@ -21,13 +18,13 @@ from proofbeak.executor import SubprocessExecutor
 from proofbeak.report import render_html
 from proofbeak.store import Store
 
-AVAILABLE = all(importlib.util.find_spec(name) for name in ("wsgidav", "cheroot")) \
-    and shutil.which("docker") is not None
+AVAILABLE = shutil.which("docker") is not None
 PASSWORD = "proofbeak-local-only"  # Public disposable fixture credential, never a real account.
 IMAGE = os.environ.get("PROOFBEAK_WEBDAV_APACHE_IMAGE", "proofbeak-webdav-apache:test")
+WSGI_IMAGE = os.environ.get("PROOFBEAK_WEBDAV_WSGI_IMAGE", "proofbeak-webdav-wsgi:test")
 
 
-def wait_for(endpoint, process=None):
+def wait_for(endpoint):
     adapter = WebDAVAdapter("webdav:ready", endpoint, "proofbeak", PASSWORD)
     deadline = time.monotonic() + 20
     while True:
@@ -36,54 +33,44 @@ def wait_for(endpoint, process=None):
             adapter.transport.request("OPTIONS", endpoint + "/", headers=adapter.headers, allowed=(200, 204))
             return
         except ProviderError:
-            if (process and process.poll() is not None) or time.monotonic() > deadline:
+            if time.monotonic() > deadline:
                 raise RuntimeError("actual WebDAV fixture did not become ready") from None
             time.sleep(.1)
 
 
-@unittest.skipUnless(AVAILABLE, "install WebDAV fixture dependencies and run Docker for integration")
+@unittest.skipUnless(AVAILABLE, "run Docker for the two real WebDAV fixtures")
 class WebDAVIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        checked = subprocess.run(["docker", "image", "inspect", IMAGE], capture_output=True, text=True)
+        checked = subprocess.run(["docker", "image", "inspect", IMAGE, WSGI_IMAGE],
+                                 capture_output=True, text=True)
         if checked.returncode:
-            raise unittest.SkipTest("build deploy/Dockerfile.webdav-apache before integration")
+            raise unittest.SkipTest("build both WebDAV fixture images before integration")
         cls.tmp = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.tmp.cleanup)
         cls.root = Path(cls.tmp.name)
-        objects = cls.root / "wsgi-objects"
-        objects.mkdir()
-        with socket.socket() as sock:
-            sock.bind(("127.0.0.1", 0))
-            port = sock.getsockname()[1]
-        cls.log = (cls.root / "wsgi.log").open("w+")
-        cls.addClassCleanup(cls.log.close)
-        cls.wsgi = subprocess.Popen([sys.executable, "deploy/webdav_wsgi.py"], stdin=subprocess.PIPE,
-            stdout=cls.log, stderr=cls.log, text=True)
-        def stop_wsgi():
-            cls.wsgi.terminate()
-            try:
-                cls.wsgi.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                cls.wsgi.kill()
-                cls.wsgi.wait(timeout=5)
-        cls.addClassCleanup(stop_wsgi)
-        cls.wsgi.stdin.write(json.dumps({"root": str(objects), "host": "127.0.0.1",
-                                         "port": port, "password": PASSWORD}))
-        cls.wsgi.stdin.close()
-        cls.wsgi_url = f"http://127.0.0.1:{port}"
-        wait_for(cls.wsgi_url, cls.wsgi)
-        cls.container = subprocess.check_output(["docker", "run", "-d", "--read-only",
-            "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
-            "--tmpfs", "/tmp:uid=10001,gid=10001,mode=0700,size=64m",
-            "--tmpfs", "/usr/local/apache2/htdocs:uid=10001,gid=10001,mode=0700,size=32m",
-            "-p", "127.0.0.1::8080", IMAGE], text=True).strip()
-        cls.addClassCleanup(lambda: subprocess.run(["docker", "rm", "-f", cls.container],
-                                                  check=True, stdout=subprocess.DEVNULL))
-        metadata = json.loads(subprocess.check_output(["docker", "inspect", cls.container], text=True))[0]
-        port = metadata["NetworkSettings"]["Ports"]["8080/tcp"][0]["HostPort"]
-        cls.apache_url = f"http://127.0.0.1:{port}"
-        wait_for(cls.apache_url)
+        endpoints, fixtures = {}, {}
+        for name, image, data_path in (("wsgidav", WSGI_IMAGE, "/tmp/objects"),
+                                      ("apache", IMAGE, "/usr/local/apache2/htdocs")):
+            container = subprocess.check_output(["docker", "run", "-d", "--read-only",
+                "--cap-drop", "ALL", "--security-opt", "no-new-privileges:true",
+                "--tmpfs", "/tmp:uid=10001,gid=10001,mode=0700,size=64m",
+                "--tmpfs", data_path + ":uid=10001,gid=10001,mode=0700,size=32m",
+                "-p", "127.0.0.1::8080", image], text=True).strip()
+            cls.addClassCleanup(lambda cid=container: subprocess.run(
+                ["docker", "rm", "-f", cid], check=True, stdout=subprocess.DEVNULL))
+            metadata = json.loads(subprocess.check_output(["docker", "inspect", container], text=True))[0]
+            port = metadata["NetworkSettings"]["Ports"]["8080/tcp"][0]["HostPort"]
+            endpoints[name] = f"http://127.0.0.1:{port}"
+            wait_for(endpoints[name])
+            fixtures[name] = {"image_id": metadata["Image"], "build_tag": image,
+                              "endpoint": endpoints[name], "user": metadata["Config"]["User"],
+                              "read_only_rootfs": metadata["HostConfig"]["ReadonlyRootfs"]}
+        cls.wsgi_url, cls.apache_url = endpoints["wsgidav"], endpoints["apache"]
+        if os.environ.get("PROOFBEAK_WEBDAV_REPORT_DIR"):
+            output = Path(os.environ["PROOFBEAK_WEBDAV_REPORT_DIR"])
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "fixture-environment.json").write_text(json.dumps(fixtures, indent=2) + "\n")
 
     def adapters(self):
         return [WebDAVAdapter("webdav:wsgidav", self.wsgi_url, "proofbeak", PASSWORD),

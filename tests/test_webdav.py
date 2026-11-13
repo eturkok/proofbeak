@@ -49,7 +49,7 @@ class MemoryDAV:
             repeat = "If-Match" in headers
             if repeat and self.mode == "concurrent":
                 self.counter += 1
-            if repeat and headers["If-Match"] != f'"etag-{self.counter}"':
+            if repeat and headers["If-Match"] not in {"*", f'"etag-{self.counter}"'}:
                 raise ProviderError("concurrent_modification")
             status = 204 if key in self.files else 201
             self.files[key] = body
@@ -73,6 +73,10 @@ class MemoryDAV:
                 payload = self.files[key]
                 if self.mode != "missing_etag":
                     response_headers["etag"] = f'"etag-{self.counter}"'
+                    if self.mode == "weak_etag":
+                        response_headers["etag"] = "W/" + response_headers["etag"]
+                    elif self.mode == "malformed_etag":
+                        response_headers["etag"] = "not-a-validator"
         elif method == "PROPFIND":
             status = 207
             entries = [(self.base, True)]
@@ -150,9 +154,9 @@ class WebDAVTests(unittest.TestCase):
                 self.assertEqual(result["verdict"], "fail")
                 self.assertEqual(result["cleanup_status"], "cleaned")
 
-    def test_permission_ambiguous_write_missing_etag_and_read_gap_are_inconclusive(self):
+    def test_permission_ambiguous_write_invalid_etag_and_read_gap_are_inconclusive(self):
         for mode, code in (("permission", "permission_denied"), ("lost_write", "write_outcome_unknown"),
-                           ("concurrent", "concurrent_modification"), ("missing_etag", "etag_unavailable"),
+                           ("concurrent", "concurrent_modification"), ("malformed_etag", "invalid_etag"),
                            ("unreadable_after", "observation_unavailable")):
             with self.subTest(mode=mode):
                 result, _, _ = self.execute(mode)
@@ -160,6 +164,15 @@ class WebDAVTests(unittest.TestCase):
                 self.assertEqual(result["reason_code"], code)
         result = self.store.db.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
         self.assertEqual(result, 5)
+
+    def test_missing_or_weak_etag_does_not_add_an_unrequested_compare_and_swap_condition(self):
+        for mode in ("missing_etag", "weak_etag"):
+            with self.subTest(mode=mode):
+                result, _, _ = self.execute(mode)
+                self.assertEqual(result["verdict"], "pass")
+                self.assertEqual(result["cleanup_status"], "cleaned")
+                self.assertEqual(result["profile"]["write_precondition"],
+                                 "strong_etag_when_available_else_existing_object")
 
     def test_invalid_and_partial_listings_never_become_capability_failures(self):
         for mode in ("foreign_href", "encoded_traversal", "duplicate_href", "nested_collection",

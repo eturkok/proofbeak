@@ -48,7 +48,7 @@ Google account access is not a primary development or pilot prerequisite.
 - [x] Add actual WsgiDAV/Apache fixtures and a mandatory comparison/evidence CI job.
 - [ ] Run the two-service comparison and retain its JSON/HTML evidence.
 
-The comparison checks one visible key and its content. It does not establish exact-once
+The comparison checks one test-data key and its content. It does not establish exact-once
 execution, hidden version-history deduplication, crash durability or concurrent-writer safety.
 See [storage comparison](storage-comparison.md).
 
