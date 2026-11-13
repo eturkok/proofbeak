@@ -9,13 +9,19 @@ import tempfile
 from pathlib import Path
 
 
-CLIENT = '''
-import json, os, subprocess, sys, time
+VERSION_CHECK = '''
+import subprocess
 from importlib.metadata import version
 from proofbeak import __version__
-from proofbeak.interfaces.mcp import BridgeClient
 assert version("proofbeak") == __version__
 assert subprocess.check_output(["proofbeak", "--version"], text=True).strip() == __version__
+print(__version__)
+'''
+
+
+CLIENT = '''
+import json, os, sys, time
+from proofbeak.interfaces.mcp import BridgeClient
 payload = json.load(sys.stdin)
 client = BridgeClient(payload.get("endpoint", "http://127.0.0.1:8765"), payload["token"])
 deadline = time.monotonic() + 15
@@ -47,7 +53,7 @@ assert evidence["evidence"]["after"] is not None
 assert evidence["cleanup_status"] == "cleaned"
 assert evidence["validity"]["reusable"]
 assert os.geteuid() != 0
-print(json.dumps({"version":__version__,"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned",
+print(json.dumps({"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned",
                   "run_id":run_id,"evidence_hash":evidence["evidence_hash"],"observed_at":evidence["observed_at"],
                   "worker_backend":comparison["runner"]["backend"]}))
 '''
@@ -70,6 +76,8 @@ def smoke(image, uid):
                    "--volume", f"{path}:/run/proofbeak/config.json:ro", image]
         container = subprocess.check_output(command, text=True).strip()
         try:
+            installed_version = subprocess.check_output(
+                ["docker", "exec", container, "python", "-c", VERSION_CHECK], text=True).strip()
             completed = subprocess.run(["docker", "exec", "-i", container, "python", "-c", CLIENT],
                 input=json.dumps({"token": token}), text=True, capture_output=True, timeout=40)
             if completed.returncode:
@@ -79,7 +87,8 @@ def smoke(image, uid):
             metadata = json.loads(subprocess.check_output(["docker", "inspect", container], text=True))[0]
             assert metadata["HostConfig"]["NetworkMode"] == "none"
             assert metadata["HostConfig"]["ReadonlyRootfs"]
-            return {**result, "external_network": "disabled", "rootfs": "read-only"}
+            return {**result, "version": installed_version,
+                    "external_network": "disabled", "rootfs": "read-only"}
         finally:
             subprocess.run(["docker", "rm", "-f", container], check=True, stdout=subprocess.DEVNULL)
 

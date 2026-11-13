@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from container_smoke import CLIENT
+from container_smoke import CLIENT, VERSION_CHECK
 
 
 def run(*args, **kwargs):
@@ -79,7 +79,9 @@ if __name__ == "__main__":
         actual_uid = int(subprocess.check_output(["kubectl", "-n", namespace, "exec",
             "deployment/proofbeak-proofbeak", "--", "python", "-c", "import os; print(os.geteuid())"], text=True))
         assert actual_uid != 0
-        result.update({"client_uid": result.pop("uid"), "uid": actual_uid,
+        installed_version = subprocess.check_output(["kubectl", "-n", namespace, "exec",
+            "deployment/proofbeak-proofbeak", "--", "python", "-c", VERSION_CHECK], text=True).strip()
+        result.update({"client_uid": result.pop("uid"), "uid": actual_uid, "version": installed_version,
                        "helm_install": "passed", "persistent_volume": True,
                        "pod_replaced": True, "evidence_survived_restart": True,
                        "idempotency_survived_restart": True,
