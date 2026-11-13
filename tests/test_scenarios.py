@@ -246,6 +246,17 @@ class ScenarioServiceTests(unittest.TestCase):
 
 
 class HTTPProfileTests(unittest.TestCase):
+    def test_http_parameters_cannot_expand_into_another_path_segment(self):
+        for value in (".", "..", "../admin", "a/b", "a\\b", "%2e%2e", "a%252fb", "a\u0000b"):
+            spec = {"id": "scenario.v1", "name": "A configured read", "fixture": {"key": value},
+                "setup": [], "steps": [], "require": [], "observe": [
+                    {"id": "item", "op": "http.get", "args": {"route": "item",
+                     "params": {"key": {"ref": ["fixture", "key"]}}}}],
+                "expect": [{"name": "ready", "actual": ["after", "item", "json", "ready"],
+                            "op": "eq", "value": True}]}
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                ScenarioPack().parse(spec)
+
     def test_response_mapping_preserves_candidate_identity_across_worker_codec(self):
         adapter = ScenarioAdapter(JSONReadConnector("http:catalog", "http://127.0.0.1:8803", {
             "record": {"path": "/items/{key}", "project": {"ready": ["payload", "enabled"]}}}))

@@ -23,6 +23,8 @@ class Handler(BaseHTTPRequestHandler):
                 else {"data": {"usable": False, "records": [1, 2]}})
         if mode == "missing":
             body = {"item": {"values": [1, 2, 3]}}
+        if mode == "unsafe":
+            body = {"item": {"ready": True, "values": ["../admin"]}}
         encoded = json.dumps(body).encode()
         if mode == "invalid":
             encoded = b'{"same":1,"same":2}'
@@ -123,6 +125,16 @@ class HTTPScenarioTests(unittest.TestCase):
         self.spec["expect"] = [{"name": "unknown", "actual": ["after", "record", "json", "ready"],
                                 "op": "ne", "value": False}]
         self.assertEqual(self.run_spec()["candidates"][0]["verdict"], "inconclusive")
+
+    def test_provider_supplied_path_parameter_cannot_escape_the_configured_route(self):
+        self.servers[0].mode = "unsafe"
+        self.spec["setup"] = [{"id": "lookup", "op": "http.get", "args": copy.deepcopy(self.spec["observe"][0]["args"])}]
+        self.spec["observe"][0]["args"]["params"]["key"] = {"ref": ["setup", "lookup", "json", "values", 0]}
+        first = self.run_spec()["candidates"][0]
+        self.assertEqual(first["verdict"], "inconclusive")
+        self.assertEqual(first["reason_code"], "scenario_arguments_invalid")
+        self.assertEqual(first["cleanup_status"], "cleaned")
+        self.assertEqual(self.servers[0].reads, ["/items/sample"])
 
     def test_permission_or_format_errors_are_inconclusive(self):
         self.servers[0].mode = "unavailable"

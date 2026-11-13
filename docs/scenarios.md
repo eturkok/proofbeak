@@ -202,6 +202,8 @@ With those observed responses A passes and B fails. Missing `ready` is inconclus
 Read-only scenarios need no action phase and create no remote resources. HTTPS is required
 for remote origins; loopback HTTP is allowed. Paths are operator-owned templates; values
 are encoded as path parameters. Redirects and implicit proxy use are disabled.
+Parameter values must be single path segments: separators, percent escapes, control
+characters and `.`/`..` are rejected, including values captured from an earlier response.
 
 For CLI use, configure `PROOFBEAK_HTTP_CATALOG_A_URL` and `PROOFBEAK_HTTP_CATALOG_A_ROUTES`
 (the route map as JSON), then select `scenario:http:catalog-a`. Server profiles use the

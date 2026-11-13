@@ -86,7 +86,8 @@ def validate_arguments(operation, arguments):
             raise ValueError("invalid HTTP route or parameters")
         for name, value in arguments["params"].items():
             if not re.fullmatch(IDENTIFIER, name) or type(value) not in {str, int, bool} \
-                    or not 1 <= len(str(value).encode()) <= 128 or str(value) in {".", ".."}:
+                    or not 1 <= len(str(value).encode()) <= 128 or str(value) in {".", ".."} \
+                    or any(char in "/\\%" or ord(char) < 32 or ord(char) == 127 for char in str(value)):
                 raise ValueError("invalid HTTP path parameter")
 
 
