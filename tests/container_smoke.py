@@ -10,8 +10,12 @@ from pathlib import Path
 
 
 CLIENT = '''
-import json, os, sys, time
+import json, os, subprocess, sys, time
+from importlib.metadata import version
+from proofbeak import __version__
 from proofbeak.interfaces.mcp import BridgeClient
+assert version("proofbeak") == __version__
+assert subprocess.check_output(["proofbeak", "--version"], text=True).strip() == __version__
 payload = json.load(sys.stdin)
 client = BridgeClient(payload.get("endpoint", "http://127.0.0.1:8765"), payload["token"])
 deadline = time.monotonic() + 15
@@ -43,7 +47,7 @@ assert evidence["evidence"]["after"] is not None
 assert evidence["cleanup_status"] == "cleaned"
 assert evidence["validity"]["reusable"]
 assert os.geteuid() != 0
-print(json.dumps({"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned",
+print(json.dumps({"version":__version__,"uid":os.geteuid(),"verdict":"pass","cleanup":"cleaned",
                   "run_id":run_id,"evidence_hash":evidence["evidence_hash"],"observed_at":evidence["observed_at"],
                   "worker_backend":comparison["runner"]["backend"]}))
 '''

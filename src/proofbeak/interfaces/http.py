@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
 
+from proofbeak import __version__
 from proofbeak.service import ServiceError, TrialService
 
 
@@ -52,7 +53,7 @@ def create_app(service: TrialService, background=True):
         finally:
             service.close()
 
-    app = FastAPI(title="Proofbeak", version="0.3.0", lifespan=lifespan,
+    app = FastAPI(title="Proofbeak", version=__version__, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.add_middleware(BodyLimit)
     bearer = HTTPBearer(auto_error=False)

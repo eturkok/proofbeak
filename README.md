@@ -12,11 +12,25 @@ deployment. Kubernetes and OpenShift are optional hosting choices. No OpenShift 
 CRD, SDK, subscription, or platform account is required. Calico is used to verify network
 policy in CI; it is not a Proofbeak runtime dependency.
 
-This is an early development version based on the
-[product and project plan](https://chatgpt.com/library?file_id=libfile_f45914e128bc819185b293e71955b439&account_id=personal).
-The local CLI has a domain-neutral execution core and registered trial packages. It is not
-the finished pilot. Development happens on feature branches;
-changes reach `main` only through reviewed pull requests.
+Version **0.3.0** is the first integrated MVP: CLI, REST/MCP, evidence lifecycle and optional
+container/Helm deployment. Real-provider and protocol checks use synthetic test data;
+human onboarding, adoption and decision-quality evaluation remain open pilot work.
+See [release notes](CHANGELOG.md) and the [delivery roadmap](docs/roadmap.md).
+Development happens on scoped branches and reaches `main` through verified pull requests.
+
+## Quick start
+
+From a checkout, Python 3.11+ on Linux or macOS is enough for a real filesystem trial:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
+  --candidate filesystem --key first-trial \
+  --output reports/first-trial.json --html reports/first-trial.html
+```
+
+Open `reports/first-trial.html` to inspect the condition, independent observations and cleanup.
+For two real HTTP services and an agent protocol client, follow the
+[MCP walkthrough](docs/mcp-walkthrough.md).
 
 ## The first question: repeat a file upload
 

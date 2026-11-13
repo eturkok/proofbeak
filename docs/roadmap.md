@@ -11,6 +11,18 @@ The primary comparison is now repeated writes to the same storage key, exercised
 self-hosted WsgiDAV and Apache WebDAV. Calendar trials remain an optional second domain.
 Google account access is not a primary development or pilot prerequisite.
 
+## Integrated MVP 0.3.0
+
+The CLI, actual storage comparison, REST/MCP workflow, bounded workers, evidence lifecycle
+and optional deployment package are included in the first integrated release. The MCP
+storage workflow and provider mutation journals passed in
+[CI run 43387435849](https://github.com/eturkok/proofbeak/actions/runs/43387435849).
+Release validation additionally checks installed package/CLI version consistency in the
+rootless runtime image. See [release notes](../CHANGELOG.md).
+
+The unchecked human-pilot gates below remain open. Shipping the MVP does not establish
+onboarding speed, adoption, two-team reuse demand or improved agent decisions.
+
 | Stage | Planned effort | Exit condition | Branch |
 | --- | --- | --- | --- |
 | Foundation | First 12 h | Closed fixture, CLI, real self-hosted observations, two real user selection questions | `feat/storage-provider-comparison` |
