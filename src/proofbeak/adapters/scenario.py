@@ -14,6 +14,7 @@ from proofbeak.models import canonical, fingerprint, keys
 from proofbeak.packs.scenario import (ARGUMENTS, IDENTIFIER, READ_ONLY, ScenarioSnapshot,
                                      json_value, path as reference_path, resolve, validate_arguments)
 from proofbeak.packs.storage import StorageTrial, content_hash
+from proofbeak.validation import located
 
 OBJECT_OPERATIONS = frozenset({"object.put", "object.get", "object.list", "object.delete"})
 
@@ -142,14 +143,20 @@ class ScenarioAdapter:
                     if op == "http.get" else {})} for op in sorted(self.operations)]
 
     def validate_scenario(self, trial):
-        for step in [*trial.setup, *trial.steps, *trial.observe]:
-            if step["op"] not in self.operations:
-                raise ValueError("scenario operation is not supported by this candidate")
-            if step["op"] == "http.get":
-                route = step["args"]["route"]
-                if not isinstance(route, str) or route not in self.backend.parameters \
-                        or set(step["args"]["params"]) != self.backend.parameters[route]:
-                    raise ValueError("unknown HTTP route or path parameters")
+        for phase in ("setup", "steps", "observe"):
+            for index, step in enumerate(getattr(trial, phase)):
+                with located([phase, index]):
+                    with located(["op"], "unsupported_candidate_operation"):
+                        if step["op"] not in self.operations:
+                            raise ValueError("scenario operation is not supported by this candidate")
+                    if step["op"] == "http.get":
+                        route = step["args"]["route"]
+                        with located(["args", "route"], "route_not_configured"):
+                            if route not in self.backend.parameters:
+                                raise ValueError("HTTP route is not configured for this candidate")
+                        with located(["args", "params"], "route_parameters_mismatch"):
+                            if set(step["args"]["params"]) != self.backend.parameters[route]:
+                                raise ValueError("parameters must match the configured HTTP route")
 
     def resource(self, run_id):
         return self.backend.resource(run_id)

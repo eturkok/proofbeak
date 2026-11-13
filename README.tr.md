@@ -87,7 +87,7 @@ doğrulama ve rapor dışa aktarma akışını çalıştırılabilir komutlarla 
 
 ## Bugün neleri destekliyor?
 
-**0.5.0** sürümünde kullanıcı kendi senaryosunu şu ortak işlemlerle tanımlayabilir:
+**0.5.1** sürümünde kullanıcı kendi senaryosunu şu ortak işlemlerle tanımlayabilir:
 
 | Yetenek | Adaylar | Sizin belirlediğiniz |
 | --- | --- | --- |

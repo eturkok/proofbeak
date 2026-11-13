@@ -15,9 +15,12 @@ from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.adapters.scenario import JSONReadConnector, ScenarioAdapter
 from proofbeak.engine import recover_cleanup, run_trial
+from proofbeak.models import fingerprint
 from proofbeak.packs import builtins
 from proofbeak.report import render_html, write_private
 from proofbeak.store import IdempotencyConflict, Store
+from proofbeak.validation import (TrialValidationError, candidate_issues, issue_from,
+                                  issue_location, validation_result)
 
 
 def adapters_for(names):
@@ -71,6 +74,7 @@ def main(argv=None):
     validate = commands.add_parser("validate", help="validate a closed trial definition")
     validate.add_argument("spec", type=Path)
     validate.add_argument("--candidate", action="append", help="also validate configured candidate operations without execution")
+    validate.add_argument("--json", action="store_true", help="return structured authoring diagnostics")
     run = commands.add_parser("run", help="run a local acceptance trial")
     run.add_argument("spec", type=Path)
     run.add_argument("--candidate", action="append", required=True)
@@ -105,16 +109,21 @@ def main(argv=None):
         if args.spec.stat().st_size > 65536:
             raise ValueError("trial definition exceeds 64 KiB")
         spec = json.loads(args.spec.read_text())
-        pack, _ = builtins().prepare(spec)
+        pack, trial = builtins().prepare(spec)
         if args.command == "validate":
-            if args.candidate:
-                for adapter in adapters_for(args.candidate):
-                    if pack.id not in adapter.supported_trials:
-                        raise ValueError("candidate does not support trial package")
-                    if hasattr(pack, "validate_adapter"):
-                        pack.validate_adapter(pack.parse(spec), adapter)
-            print(f"Valid: {pack.id} (package {pack.version})")
-            return 0
+            if args.candidate and (len(args.candidate) > 4 or len(set(args.candidate)) != len(args.candidate)):
+                raise TrialValidationError("choose one to four distinct candidates", code="invalid_candidates")
+            issues = candidate_issues(pack, trial, adapters_for(args.candidate)) if args.candidate else []
+            if args.json:
+                print(json.dumps(validation_result(issues, pack_id=pack.id, pack_version=pack.version,
+                                                   test_hash=fingerprint(spec), candidates=args.candidate or [])))
+            elif issues:
+                for issue in issues:
+                    print(f'Invalid input for {issue["candidate"]} at {issue_location(issue)}: {issue["message"]}',
+                          file=sys.stderr)
+            else:
+                print(f"Valid: {pack.id} (package {pack.version})")
+            return 3 if issues else 0
         if args.html and args.output.resolve() == args.html.resolve():
             raise ValueError("JSON and HTML output paths must differ")
         protected = {args.spec.resolve(), args.db.resolve(), args.db.with_suffix(args.db.suffix + ".lock").resolve()}
@@ -143,8 +152,12 @@ def main(argv=None):
     except sqlite3.Error:
         print("State unavailable; repair the store and retry with the same key.", file=sys.stderr)
         return 2
-    except (ValueError, OSError) as exc:
-        print(f"Invalid input: {exc}", file=sys.stderr)
+    except (ValueError, TypeError, RecursionError, OSError) as exc:
+        issue = issue_from(exc)
+        if args.command == "validate" and args.json:
+            print(json.dumps(validation_result([issue])))
+        else:
+            print(f'Invalid input at {issue_location(issue)}: {issue["message"]}', file=sys.stderr)
         return 3
     finally:
         if store:

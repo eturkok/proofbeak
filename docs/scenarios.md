@@ -104,6 +104,47 @@ creating a job, reserving an idempotency key, or contacting a provider. The resp
 `valid`, `issues`, `execution_performed: false` and `provider_access_checked: false`.
 An invalid definition returns useful issues; an authorization failure remains an API error.
 
+### Locate and repair a definition
+
+Validation returns a stable issue `code`, a short `message` and a `path` array relative to
+your scenario definition. For example, an unavailable fixture reference in an action returns:
+
+```json
+{
+  "valid": false,
+  "issues": [{
+    "code": "invalid_reference",
+    "message": "fixture reference does not exist",
+    "path": ["steps", 0, "args", "key", "ref"]
+  }],
+  "execution_performed": false,
+  "provider_access_checked": false
+}
+```
+
+Fix that field and validate again. Definition validation reports the first blocking issue.
+Once the definition parses, capability validation reports the first incompatibility for
+**each** incompatible candidate, up to the four-candidate request limit. Those issues also
+include `candidate`; for example, `unsupported_candidate_operation` at `["setup", 0, "op"]`,
+`route_not_configured` at `["observe", 0, "args", "route"]`, or
+`route_parameters_mismatch` at `["observe", 0, "args", "params"]`.
+Paths locate definition fields, not provider URLs or JSON response locations. Empty paths
+indicate a definition-wide problem. Error messages omit fixture and argument values;
+do not use message text as a machine identifier. Authorization/configuration failures remain
+API errors, and a rejected definition never reserves an idempotency key.
+
+For the same feedback locally:
+
+```bash
+PYTHONPATH=src python3 -m proofbeak validate my-scenario.json \
+  --candidate scenario:filesystem --json
+```
+
+JSON mode prints one structured result to stdout: exit code `0` means valid, `3` means invalid.
+Without `--json`, errors show a readable location such as `/steps/0/args/key/ref` on stderr.
+The MCP example client preserves server validation issues in its final JSON error and
+creates no report or run for a rejected definition. It does not rewrite your scenario or key.
+
 Validation does not prove that credentials work or that the service satisfies the condition.
 Only explicit `POST /runs` / `run_trial` executes the accepted trial. Identical retries use
 the same key; a changed definition or context requires a new key. Historical evidence lookup

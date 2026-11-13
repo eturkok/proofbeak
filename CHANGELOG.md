@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.1 — 2026-11-13
+
+Make user-defined scenarios easier to repair before execution. Validation errors now include
+a stable code and the location of the invalid operation, argument, reference or condition.
+Once a definition parses, each incompatible candidate gets its own diagnostic, including
+the configured candidate ID and operation/route/parameter location.
+
+- Add CLI `validate --json` with structured stdout and exit codes 0/3. Readable CLI errors
+  show field locations. Invalid/deeply nested JSON and duplicate/excess candidate selections
+  remain non-executing errors.
+- Preserve server diagnostics in the MCP example client's final JSON error. Rejected
+  definitions create no job, reserve no key, and create no report or provider mutations.
+- Check diagnostic locations, input-value omission, bounded malformed-name feedback,
+  candidate authorization and repair-then-run behavior in regressions. Actual MCP/WebDAV
+  verification now includes rejection through the example client before any provider writes.
+- Update application/package to 0.5.1 and Helm chart to 0.3.1. No database, runtime dependency,
+  scenario semantics or adapter/profile version change; existing execution contexts remain
+  compatible. Use the usual stopped-service backup/configuration-check upgrade procedure.
+
+Diagnostics report the first definition issue or the first incompatibility per candidate.
+Validation does not establish provider availability or a passing acceptance condition.
+
 ## 0.5.0 — 2026-11-13
 
 Callers can now define their own acceptance scenarios instead of adding a Python package

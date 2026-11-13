@@ -60,6 +60,13 @@ authentication and tenant/provider allowlists remain enforced. A valid definitio
 establish provider availability or a passing trial. `scenario.v1` discovery includes its
 Draft 2020-12 `input_schema` and each candidate's operations; see [scenario authoring](scenarios.md).
 
+Authoring diagnostics include `code`, `message` and a `path` array relative to `test` (without
+a leading `test` segment). A definition returns its first blocking issue; a parsed definition
+returns one issue per incompatible candidate, each with its `candidate` ID. Messages omit
+fixture/argument values. The MCP example client returns these issues in its final safe JSON
+error without creating a run or report. Clients can fix the indicated field and validate
+again; validation does not choose or reserve their execution key.
+
 ```python
 import json
 import os

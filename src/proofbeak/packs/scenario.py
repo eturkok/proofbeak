@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from proofbeak.adapters.base import ProviderError
 from proofbeak.models import canonical, fingerprint, keys
 from proofbeak.observer import equal
+from proofbeak.validation import located
 
 IDENTIFIER = r"[A-Za-z][A-Za-z0-9_-]{0,47}"
 ARGUMENTS = {"object.put": {"key", "content"}, "object.get": {"key"},
@@ -31,11 +32,9 @@ def json_value(value, depth=0):
         if isinstance(value, dict):
             if any(not isinstance(k, str) or not 1 <= len(k.encode()) <= 128 for k in value):
                 raise ValueError("invalid scenario object keys")
-            values = value.values()
-        else:
-            values = value
-        for item in values:
-            json_value(item, depth + 1)
+        for key, item in (value.items() if isinstance(value, dict) else enumerate(value)):
+            with located([key], "invalid_json_value"):
+                json_value(item, depth + 1)
         return
     raise ValueError("scenario values must be bounded finite JSON")
 
@@ -74,21 +73,29 @@ def resolve(value, context):
 def validate_arguments(operation, arguments):
     keys(arguments, ARGUMENTS[operation], "operation arguments")
     if operation.startswith("object."):
-        if "key" in arguments and (not isinstance(arguments["key"], str) or not re.fullmatch(
-            r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", arguments["key"])):
-            raise ValueError("object key must be a simple filename")
-        if "content" in arguments and (not isinstance(arguments["content"], str) or
-                not 1 <= len(arguments["content"].encode()) <= 4096):
-            raise ValueError("object content must contain 1 to 4096 UTF-8 bytes")
+        with located(["key"], "invalid_object_key"):
+            if "key" in arguments and (not isinstance(arguments["key"], str) or not re.fullmatch(
+                r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", arguments["key"])):
+                raise ValueError("object key must be a simple filename")
+        with located(["content"], "invalid_object_content"):
+            if "content" in arguments and (not isinstance(arguments["content"], str) or
+                    not 1 <= len(arguments["content"].encode()) <= 4096):
+                raise ValueError("object content must contain 1 to 4096 UTF-8 bytes")
     else:
-        if not isinstance(arguments["route"], str) or not re.fullmatch(IDENTIFIER, arguments["route"]) \
-                or not isinstance(arguments["params"], dict) or len(arguments["params"]) > 8:
-            raise ValueError("invalid HTTP route or parameters")
-        for name, value in arguments["params"].items():
-            if not re.fullmatch(IDENTIFIER, name) or type(value) not in {str, int, bool} \
-                    or not 1 <= len(str(value).encode()) <= 128 or str(value) in {".", ".."} \
-                    or any(char in "/\\%" or ord(char) < 32 or ord(char) == 127 for char in str(value)):
-                raise ValueError("invalid HTTP path parameter")
+        with located(["route"], "invalid_http_route"):
+            if not isinstance(arguments["route"], str) or not re.fullmatch(IDENTIFIER, arguments["route"]):
+                raise ValueError("invalid HTTP route")
+        with located(["params"], "invalid_http_parameters"):
+            if not isinstance(arguments["params"], dict) or len(arguments["params"]) > 8:
+                raise ValueError("invalid HTTP parameters")
+            for name, value in arguments["params"].items():
+                if not isinstance(name, str) or not re.fullmatch(IDENTIFIER, name):
+                    raise ValueError("HTTP parameter names must be simple identifiers")
+                with located([name], "invalid_http_parameter"):
+                    if type(value) not in {str, int, bool} \
+                            or not 1 <= len(str(value).encode()) <= 128 or str(value) in {".", ".."} \
+                            or any(char in "/\\%" or ord(char) < 32 or ord(char) == 127 for char in str(value)):
+                        raise ValueError("invalid HTTP path parameter")
 
 
 @dataclass(frozen=True)
@@ -190,92 +197,108 @@ class ScenarioPack:
                         "value": {"ref": ["before", "other", "content"]}}]}
 
     def parse(self, spec):
-        keys(spec, {"id", "name", "fixture", "setup", "steps", "observe", "require", "expect"}, "scenario")
-        if spec["id"] != self.id or not isinstance(spec["name"], str) or not 1 <= len(spec["name"]) <= 120:
-            raise ValueError("invalid scenario name or id")
-        if not isinstance(spec["fixture"], dict) or len(canonical(spec["fixture"]).encode()) > 16384:
-            raise ValueError("fixture must be an object of at most 16 KiB")
-        json_value(spec["fixture"])
-        copied = json.loads(canonical(spec))
+        with located([], "invalid_fields"):
+            keys(spec, {"id", "name", "fixture", "setup", "steps", "observe", "require", "expect"}, "scenario")
+        with located(["id"], "invalid_trial_id"):
+            if spec["id"] != self.id:
+                raise ValueError("unsupported scenario format")
+        with located(["name"], "invalid_name"):
+            if not isinstance(spec["name"], str) or not 1 <= len(spec["name"]) <= 120:
+                raise ValueError("scenario name must contain 1 to 120 characters")
+        with located(["fixture"], "invalid_fixture"):
+            if not isinstance(spec["fixture"], dict) or len(canonical(spec["fixture"]).encode()) > 16384:
+                raise ValueError("fixture must be an object of at most 16 KiB")
+            json_value(spec["fixture"])
+        with located([], "invalid_json_value"):
+            copied = json.loads(canonical(spec))
         known = {"fixture": set(copied["fixture"]), "setup": set(), "steps": set(), "before": set()}
 
         def expression(value, roots):
             if is_reference(value):
-                reference = path(value["ref"])
-                if len(reference) < 2 or reference[0] not in roots or reference[1] not in known[reference[0]]:
-                    raise ValueError("unknown or forward scenario reference")
-                if reference[0] == "fixture":
-                    try:
-                        resolve(value, {"fixture": copied["fixture"]})
-                    except ProviderError:
-                        raise ValueError("fixture reference does not exist") from None
-            else:
-                json_value(value)
-
-        for phase, limit in (("setup", 8), ("observe", 8), ("steps", 16)):
-            definitions = copied[phase]
-            if not isinstance(definitions, list) or len(definitions) > limit or (phase == "observe" and not definitions):
-                raise ValueError("invalid bounded scenario operation list")
-            seen = set()
-            for step in definitions:
-                keys(step, {"id", "op", "args"}, "scenario operation")
-                if not isinstance(step["id"], str) or not re.fullmatch(IDENTIFIER, step["id"]) or step["id"] in seen:
-                    raise ValueError("operation ids must be unique identifiers within their phase")
-                seen.add(step["id"])
-                operation = step["op"]
-                if not isinstance(operation, str) or operation not in ARGUMENTS \
-                        or (phase == "observe" and operation not in READ_ONLY):
-                    raise ValueError("unsupported operation or mutating observation")
-                keys(step["args"], ARGUMENTS[operation], "operation arguments")
-                if operation == "http.get" and not isinstance(step["args"]["route"], str):
-                    raise ValueError("HTTP route must be a configured literal name")
-                roots = {"fixture", "setup"} if phase == "observe" else ({"fixture", "setup"} if phase == "setup"
-                                                              else {"fixture", "setup", "before", "steps"})
-                for name, value in step["args"].items():
-                    if name == "params":
-                        if not isinstance(value, dict) or len(value) > 8:
-                            raise ValueError("invalid HTTP path parameters")
-                        for part in value.values():
-                            expression(part, roots)
-                    else:
-                        expression(value, roots)
-                # Validate literals and fixture-only references before any resource exists.
-                resolved = {}
-                for name, value in step["args"].items():
-                    values = value.values() if name == "params" else [value]
-                    if any(is_reference(v) and v["ref"][0] != "fixture" for v in values):
-                        if name == "params":
-                            resolved[name] = {key: "dynamic" if is_reference(v) and v["ref"][0] != "fixture"
-                                              else resolve(v, {"fixture": copied["fixture"]}) for key, v in value.items()}
-                        else:
-                            resolved[name] = "dynamic"
-                    else:
+                with located(["ref"], "invalid_reference"):
+                    reference = path(value["ref"])
+                    if len(reference) < 2 or reference[0] not in roots or reference[1] not in known[reference[0]]:
+                        raise ValueError("unknown or forward scenario reference")
+                    if reference[0] == "fixture":
                         try:
-                            resolved[name] = ({k: resolve(v, {"fixture": copied["fixture"]}) for k, v in value.items()}
-                                              if name == "params" else resolve(value, {"fixture": copied["fixture"]}))
+                            resolve(value, {"fixture": copied["fixture"]})
                         except ProviderError:
                             raise ValueError("fixture reference does not exist") from None
-                validate_arguments(operation, resolved)
-                if phase == "observe":
-                    known["before"].add(step["id"])
-                else:
-                    known[phase].add(step["id"])
+            else:
+                with located([], "invalid_json_value"):
+                    json_value(value)
+
+        for phase, limit in (("setup", 8), ("observe", 8), ("steps", 16)):
+            with located([phase], "invalid_operation_list"):
+                definitions = copied[phase]
+                if not isinstance(definitions, list) or len(definitions) > limit or (phase == "observe" and not definitions):
+                    raise ValueError("invalid bounded scenario operation list")
+                seen = set()
+                for index, step in enumerate(definitions):
+                    with located([index], "invalid_operation"):
+                        with located([], "invalid_fields"):
+                            keys(step, {"id", "op", "args"}, "scenario operation")
+                        with located(["id"], "invalid_operation_id"):
+                            if not isinstance(step["id"], str) or not re.fullmatch(IDENTIFIER, step["id"]) or step["id"] in seen:
+                                raise ValueError("operation ids must be unique identifiers within their phase")
+                        seen.add(step["id"])
+                        operation = step["op"]
+                        with located(["op"], "unsupported_operation"):
+                            if not isinstance(operation, str) or operation not in ARGUMENTS:
+                                raise ValueError("unsupported operation")
+                            if phase == "observe" and operation not in READ_ONLY:
+                                raise ValueError("observations must use a read-only operation")
+                        with located(["args"], "invalid_arguments"):
+                            keys(step["args"], ARGUMENTS[operation], "operation arguments")
+                            with located(["route"], "invalid_http_route"):
+                                if operation == "http.get" and not isinstance(step["args"]["route"], str):
+                                    raise ValueError("HTTP route must be a configured literal name")
+                            roots = {"fixture", "setup"} if phase != "steps" else {"fixture", "setup", "before", "steps"}
+                            for name, value in step["args"].items():
+                                with located([name], "invalid_argument"):
+                                    if name == "params":
+                                        if not isinstance(value, dict) or len(value) > 8:
+                                            raise ValueError("invalid HTTP path parameters")
+                                        for parameter, part in value.items():
+                                            if not isinstance(parameter, str) or not re.fullmatch(IDENTIFIER, parameter):
+                                                raise ValueError("HTTP parameter names must be simple identifiers")
+                                            with located([parameter], "invalid_http_parameter"):
+                                                expression(part, roots)
+                                    else:
+                                        expression(value, roots)
+                            # Runtime references are typed again before any connector call.
+                            def preflight(value):
+                                return "dynamic" if is_reference(value) and value["ref"][0] != "fixture" else resolve(
+                                    value, {"fixture": copied["fixture"]})
+                            resolved = {name: ({key: preflight(v) for key, v in value.items()} if name == "params"
+                                               else preflight(value)) for name, value in step["args"].items()}
+                            validate_arguments(operation, resolved)
+                        known["before" if phase == "observe" else phase].add(step["id"])
         known["after"] = known["before"]
         for phase, actual_root in (("require", "before"), ("expect", "after")):
-            definitions = copied[phase]
-            if not isinstance(definitions, list) or len(definitions) > 16 or (phase == "expect" and not definitions):
-                raise ValueError("invalid bounded scenario conditions")
-            seen = set()
-            for condition in definitions:
-                keys(condition, {"name", "actual", "op", "value"}, "condition")
-                if not isinstance(condition["name"], str) or not re.fullmatch(IDENTIFIER, condition["name"]) \
-                        or condition["name"] in seen or condition["op"] not in OPERATORS:
-                    raise ValueError("invalid condition name or operator")
-                seen.add(condition["name"])
-                actual = path(condition["actual"])
-                if len(actual) < 3 or actual[0] != actual_root or actual[1] not in known[actual_root]:
-                    raise ValueError("conditions must reference an independent observation")
-                expression(condition["value"], {"fixture", "before"} | ({"after"} if phase == "expect" else set()))
+            with located([phase], "invalid_condition_list"):
+                definitions = copied[phase]
+                if not isinstance(definitions, list) or len(definitions) > 16 or (phase == "expect" and not definitions):
+                    raise ValueError("invalid bounded scenario conditions")
+                seen = set()
+                for index, condition in enumerate(definitions):
+                    with located([index], "invalid_condition"):
+                        with located([], "invalid_fields"):
+                            keys(condition, {"name", "actual", "op", "value"}, "condition")
+                        with located(["name"], "invalid_condition_name"):
+                            if not isinstance(condition["name"], str) or not re.fullmatch(IDENTIFIER, condition["name"]) \
+                                    or condition["name"] in seen:
+                                raise ValueError("condition names must be unique identifiers within their phase")
+                        with located(["op"], "unsupported_predicate"):
+                            if condition["op"] not in OPERATORS:
+                                raise ValueError("unsupported condition operator")
+                        seen.add(condition["name"])
+                        with located(["actual"], "invalid_observation_reference"):
+                            actual = path(condition["actual"])
+                            if len(actual) < 3 or actual[0] != actual_root or actual[1] not in known[actual_root]:
+                                raise ValueError("conditions must reference an independent observation")
+                        with located(["value"], "invalid_expected_value"):
+                            expression(condition["value"], {"fixture", "before"} | ({"after"} if phase == "expect" else set()))
         return ScenarioTrial(**copied)
 
     def validate_adapter(self, trial, adapter):
