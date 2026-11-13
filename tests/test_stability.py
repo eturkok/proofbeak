@@ -150,3 +150,28 @@ class StabilityTests(unittest.TestCase):
         with self.assertRaises(OSError):
             Store(linked)
         self.assertEqual(original.read_text(), "must remain unchanged")
+
+    def test_cli_cannot_replace_trial_or_database_with_report(self):
+        spec = self.root / "trial.json"
+        spec.write_text(json.dumps(self.spec))
+        original = spec.read_bytes()
+        database = self.root / "cli.sqlite3"
+        for output in (spec, database, database.with_suffix(".sqlite3.lock"), Path(str(database) + "-wal")):
+            with self.subTest(output=output), redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                code = cli_main(["run", str(spec), "--candidate", "filesystem", "--key", "protected",
+                                 "--db", str(database), "--output", str(output)])
+            self.assertEqual(code, 3)
+            self.assertFalse(database.exists())
+            self.assertEqual(spec.read_bytes(), original)
+
+    def test_cli_storage_error_is_an_operational_result_without_traceback(self):
+        spec = self.root / "trial.json"
+        spec.write_text(json.dumps(self.spec))
+        database = self.root / "broken.sqlite3"
+        database.write_bytes(b"not-a-database")
+        with redirect_stdout(StringIO()), redirect_stderr(StringIO()) as errors:
+            code = cli_main(["run", str(spec), "--candidate", "filesystem", "--key", "broken",
+                             "--db", str(database), "--output", str(self.root / "report.json")])
+        self.assertEqual(code, 2)
+        self.assertNotIn("Traceback", errors.getvalue())
+        self.assertIn("same key", errors.getvalue())

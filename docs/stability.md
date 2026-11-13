@@ -1,6 +1,6 @@
-# Stability scope and release checks
+# Stable 0.4.0 scope and qualification
 
-The next stable release targets the generic single-coordinator service on Linux/macOS,
+Version 0.4.0 targets the generic single-coordinator service on Linux/macOS,
 with direct Python, container and standard Helm deployment options. Existing closed trial,
 REST and MCP contracts remain compatible. No vendor platform, cloud account or model is
 required. Human pilot results remain separate from technical release qualification.
@@ -51,3 +51,17 @@ PYTHONPATH=src python tests/stability_soak.py --http --iterations 30
 CI preserves `stability-core-qualification` and `stability-http-qualification` artifacts.
 These are bounded synthetic exercises, not long-duration production load or uptime evidence.
 Releases also retain the complete existing provider, interface and deployment checks.
+
+The pre-release qualification passed in
+[CI run 43405367708](https://github.com/eturkok/proofbeak/actions/runs/43405367708):
+
+| Check | Observed result |
+| --- | --- |
+| Actual 0.3.0 upgrade and recovery CLI | Passed; evidence hash/time and deleted-key protection preserved |
+| Filesystem repeated use | 60 completed trials, 6 restarts, 1 restore, 8 concurrent submissions/key |
+| Two-provider HTTP repeated use | 30 completed trials per provider, 3 restarts, 1 restore |
+| HTTP mutations | Exactly 150 per provider; zero unexpected mutations |
+| Linux descriptors | 6 before and 6 after in both checks |
+| Active workers / operation locks | Zero after completed trials |
+
+Release-head CI repeats these checks alongside the full test and deployment suites.

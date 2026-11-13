@@ -12,9 +12,11 @@ deployment. Kubernetes and OpenShift are optional hosting choices. No OpenShift 
 CRD, SDK, subscription, or platform account is required. Calico is used to verify network
 policy in CI; it is not a Proofbeak runtime dependency.
 
-Version **0.3.0** is the first integrated MVP: CLI, REST/MCP, evidence lifecycle and optional
-container/Helm deployment. Real-provider and protocol checks use synthetic test data;
-human onboarding, adoption and decision-quality evaluation remain open pilot work.
+Version **0.4.0** is the stable release for controlled single-coordinator use: CLI, REST/MCP,
+evidence lifecycle, verified state recovery and optional container/Helm deployment. Upgrade
+qualification uses the actual 0.3.0 implementation. Real-provider and repeated-use checks
+use synthetic test data; human onboarding, adoption and decision-quality evaluation remain
+open pilot work. See [stability scope and qualification](docs/stability.md).
 See [release notes](CHANGELOG.md) and the [delivery roadmap](docs/roadmap.md).
 Development happens on scoped branches and reaches `main` through verified pull requests.
 
