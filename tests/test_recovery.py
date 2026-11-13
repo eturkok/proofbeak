@@ -196,3 +196,15 @@ class RecoveryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsupported_state_schema"):
             backup(self.state, self.snapshot)
         self.assertFalse(self.snapshot.exists())
+
+    def test_incompatible_columns_and_oversized_state_are_rejected(self):
+        self.service.close()
+        with patch("proofbeak.recovery.MAX_BYTES", 1):
+            with self.assertRaisesRegex(ValueError, "snapshot_size_limit"):
+                backup(self.state, self.snapshot)
+        self.assertFalse(self.snapshot.exists())
+        with closing(sqlite3.connect(self.service.database)) as db, db:
+            db.execute("ALTER TABLE jobs RENAME COLUMN client_key TO incompatible_key")
+        with self.assertRaisesRegex(ValueError, "unsupported_state_schema"):
+            backup(self.state, self.snapshot)
+        self.assertFalse(self.snapshot.exists())

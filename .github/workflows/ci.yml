@@ -75,6 +75,9 @@ jobs:
         env:
           PROOFBEAK_REQUIRE_MCP_STORAGE: '1'
           PROOFBEAK_AGENT_FLOW_REPORT_DIR: reports/agent-flow
+      - run: PYTHONPATH=src python tests/stability_soak.py --http --iterations 30 --output reports/qualification-http/http-soak.json
+        env:
+          PROOFBEAK_WEBDAV_REPORT_DIR: reports/qualification-http
       - uses: actions/upload-artifact@v4
         with:
           name: storage-provider-comparison-evidence
@@ -85,5 +88,32 @@ jobs:
         with:
           name: mcp-storage-workflow-evidence
           path: reports/agent-flow/*
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stability-http-qualification
+          path: reports/qualification-http/*
+          if-no-files-found: error
+          retention-days: 7
+  qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -e '.[dev]'
+      - run: PYTHONPATH=src python tests/upgrade_smoke.py
+      - run: PYTHONPATH=src python tests/stability_soak.py --iterations 60 --output reports/filesystem-soak.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stability-core-qualification
+          path: |
+            reports/upgrade-smoke.json
+            reports/filesystem-soak.json
           if-no-files-found: error
           retention-days: 7

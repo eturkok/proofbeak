@@ -2,7 +2,9 @@
 
 import fcntl
 import json
+import os
 import sqlite3
+import stat
 from pathlib import Path
 from uuid import uuid4
 
@@ -16,33 +18,55 @@ class IdempotencyConflict(ValueError):
 class Store:
     def __init__(self, path: str | Path):
         path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        self.lock = path.with_suffix(path.suffix + ".lock").open("a+")
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        descriptor = os.open(path.with_suffix(path.suffix + ".lock"),
+                             os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        self.lock = os.fdopen(descriptor, "a+")
         try:
+            if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                raise ValueError("store lock must be a regular file")
+            os.fchmod(descriptor, 0o600)
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             self.lock.close()
             raise ValueError("another local worker owns this store; retry when it finishes") from None
-        self.db = sqlite3.connect(path, timeout=10)
-        self.db.execute("PRAGMA foreign_keys=ON")
-        self.db.execute("PRAGMA secure_delete=ON")
-        self.db.executescript("""
-            CREATE TABLE IF NOT EXISTS runs (
-                id TEXT PRIMARY KEY,
-                client_key TEXT UNIQUE NOT NULL,
-                request_hash TEXT NOT NULL,
-                state TEXT NOT NULL,
-                result TEXT
-            );
-            CREATE TABLE IF NOT EXISTS resources (
-                run_id TEXT NOT NULL REFERENCES runs(id),
-                adapter TEXT NOT NULL,
-                profile_hash TEXT NOT NULL,
-                resource TEXT NOT NULL,
-                status TEXT NOT NULL,
-                PRIMARY KEY (run_id, adapter)
-            );
-        """)
+        except BaseException:
+            self.lock.close()
+            raise
+        self.db = None
+        try:
+            descriptor = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+            try:
+                if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+                    raise ValueError("store must be a regular file")
+                os.fchmod(descriptor, 0o600)
+            finally:
+                os.close(descriptor)
+            self.db = sqlite3.connect(path, timeout=10)
+            self.db.execute("PRAGMA foreign_keys=ON")
+            self.db.execute("PRAGMA secure_delete=ON")
+            self.db.executescript("""
+                CREATE TABLE IF NOT EXISTS runs (
+                    id TEXT PRIMARY KEY,
+                    client_key TEXT UNIQUE NOT NULL,
+                    request_hash TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    result TEXT
+                );
+                CREATE TABLE IF NOT EXISTS resources (
+                    run_id TEXT NOT NULL REFERENCES runs(id),
+                    adapter TEXT NOT NULL,
+                    profile_hash TEXT NOT NULL,
+                    resource TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    PRIMARY KEY (run_id, adapter)
+                );
+            """)
+        except BaseException:
+            if self.db is not None:
+                self.db.close()
+            self.lock.close()
+            raise
 
     def reserve(self, key: str, request_hash: str) -> tuple[str, dict | None]:
         if not key or len(key) > 128:

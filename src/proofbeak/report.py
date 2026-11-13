@@ -2,6 +2,27 @@
 
 import html
 import json
+import os
+import tempfile
+from pathlib import Path
+
+from proofbeak.recovery import sync_directory
+
+
+def write_private(path, content):
+    """Publish a complete owner-only report; failed replacement preserves the previous export."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=".proofbeak-report-", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        sync_directory(path.parent)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
 
 
 def render_html(report: dict) -> str:

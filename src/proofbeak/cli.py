@@ -14,7 +14,7 @@ from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
 from proofbeak.engine import recover_cleanup, run_trial
 from proofbeak.packs import builtins
-from proofbeak.report import render_html
+from proofbeak.report import render_html, write_private
 from proofbeak.store import IdempotencyConflict, Store
 
 
@@ -92,14 +92,14 @@ def main(argv=None):
         if args.command == "validate":
             print(f"Valid: {pack.id} (package {pack.version})")
             return 0
+        if args.html and args.output.resolve() == args.html.resolve():
+            raise ValueError("JSON and HTML output paths must differ")
         adapters = adapters_for(args.candidate)
         store = Store(args.db)
         report = run_trial(spec, adapters, store, args.key)
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(report, indent=2) + "\n")
+        write_private(args.output, json.dumps(report, indent=2) + "\n")
         if args.html:
-            args.html.parent.mkdir(parents=True, exist_ok=True)
-            args.html.write_text(render_html(report))
+            write_private(args.html, render_html(report))
         print(f'Run {report["run_id"]} · {report["state"]}')
         for candidate in report["candidates"]:
             print(f'{candidate["provider"]}: {candidate["verdict"]} '

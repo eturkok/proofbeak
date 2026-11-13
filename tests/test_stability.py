@@ -1,16 +1,24 @@
 """Regression checks for coordinator races and operational failures."""
 
 import hashlib
+import gc
 import json
 import sqlite3
 import tempfile
 import time
 import unittest
+import warnings
+from contextlib import redirect_stdout, redirect_stderr
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
 from proofbeak.adapters.filesystem import FilesystemAdapter
 from proofbeak.service import ServiceError, Tenant, TrialService
+from proofbeak.store import Store
+from proofbeak.recovery import file_lock
+from proofbeak.report import write_private
+from proofbeak.cli import main as cli_main
 
 
 class StabilityTests(unittest.TestCase):
@@ -89,3 +97,56 @@ class StabilityTests(unittest.TestCase):
         self.assertIsNone(self.service.lock)
         self.service.start(background=False)
         self.assertTrue(self.service.available)
+
+    def test_corrupt_ledger_does_not_leak_database_or_owner_lock(self):
+        path = self.root / "broken.sqlite3"
+        path.write_bytes(b"not-a-sqlite-database")
+        gc.collect()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always", ResourceWarning)
+            with self.assertRaises(sqlite3.DatabaseError):
+                Store(path)
+            gc.collect()
+        self.assertFalse([warning for warning in caught if issubclass(warning.category, ResourceWarning)])
+        with file_lock(path.with_suffix(".sqlite3.lock")):
+            pass
+
+    def test_store_files_and_existing_store_are_owner_only(self):
+        path = self.root / "private.sqlite3"
+        store = Store(path)
+        store.close()
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(path.with_suffix(".sqlite3.lock").stat().st_mode & 0o777, 0o600)
+        path.chmod(0o644)
+        store = Store(path)
+        store.close()
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_report_failure_preserves_previous_export_and_removes_partial_file(self):
+        path = self.root / "report.json"
+        write_private(path, "original")
+        self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+        with patch("proofbeak.report.os.replace", side_effect=OSError("full disk")):
+            with self.assertRaises(OSError):
+                write_private(path, "replacement")
+        self.assertEqual(path.read_text(), "original")
+        self.assertEqual(list(self.root.glob(".proofbeak-report-*")), [])
+
+    def test_cli_rejects_overlapping_export_paths_before_creating_state(self):
+        spec = Path(__file__).resolve().parents[1] / "examples/storage.put_same_key.v1.json"
+        database = self.root / "cli.sqlite3"
+        output = self.root / "same-output"
+        with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            code = cli_main(["run", str(spec), "--candidate", "filesystem", "--key", "overlap",
+                             "--db", str(database), "--output", str(output), "--html", str(output)])
+        self.assertEqual(code, 3)
+        self.assertFalse(database.exists())
+
+    def test_store_does_not_follow_database_symlink(self):
+        original = self.root / "original"
+        original.write_text("must remain unchanged")
+        linked = self.root / "linked.sqlite3"
+        linked.symlink_to(original)
+        with self.assertRaises(OSError):
+            Store(linked)
+        self.assertEqual(original.read_text(), "must remain unchanged")

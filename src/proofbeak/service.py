@@ -86,8 +86,8 @@ class TrialService(EvidenceLifecycle):
     def _db(self):
         db = sqlite3.connect(self.database, timeout=10)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA secure_delete=ON")
         try:
+            db.execute("PRAGMA secure_delete=ON")
             with db:
                 yield db
         finally:

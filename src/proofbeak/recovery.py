@@ -120,6 +120,19 @@ def database(path, queue=False):
         tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         if not required <= tables or connection.execute("PRAGMA user_version").fetchone()[0] != 0:
             raise RecoveryError("unsupported_state_schema")
+        expected = {
+            "jobs": {"id", "tenant", "client_key", "request_hash", "request", "context", "state", "result",
+                     "reason", "recovery", "created_at", "revoked_at", "raw_purged_at", "completed_at"},
+            "tombstones": {"tenant", "id", "key_hash", "deleted_at"},
+            "audit": {"id", "tenant", "run_id", "event", "detail", "created_at"},
+            "disabled_tokens": {"digest"},
+            "runs": {"id", "client_key", "request_hash", "state", "result"},
+            "resources": {"run_id", "adapter", "profile_hash", "resource", "status"},
+        }
+        for table in required:
+            columns = {row[1] for row in connection.execute(f"PRAGMA table_info({table})")}
+            if not expected[table] <= columns:
+                raise RecoveryError("unsupported_state_schema")
     except BaseException:
         connection.close()
         raise
@@ -141,6 +154,8 @@ def backup(state, output):
     with ExitStack() as locks:
         locks.enter_context(file_lock(root / "worker.lock"))
         files, directories = inventory(root)
+        if sum((root / name).stat().st_size for name in files) > MAX_BYTES:
+            raise RecoveryError("snapshot_size_limit")
         for name in files:
             if name.startswith("ledgers/"):
                 locks.enter_context(file_lock((root / name).with_suffix(".sqlite3.lock")))

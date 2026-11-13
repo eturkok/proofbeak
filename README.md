@@ -49,6 +49,8 @@ write response is never treated as evidence that the condition passed.
 
 Cleanup status is separate from the verdict. A passing trial with failed cleanup exits with an
 operational error and leaves a durable cleanup record.
+CLI databases, lock files and exported reports use owner-only permissions. JSON/HTML exports
+replace complete files atomically; both formats must use different output paths.
 
 ## Registered trial packages
 
