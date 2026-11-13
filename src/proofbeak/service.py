@@ -163,12 +163,18 @@ class TrialService(EvidenceLifecycle):
 
     def _context(self, tenant, spec, candidates):
         try:
-            pack, _ = builtins().prepare(spec)
+            pack, trial = builtins().prepare(spec)
         except (ValueError, TypeError, RecursionError):
             raise ServiceError("invalid_trial", 422) from None
         adapters = self._adapters(tenant, candidates)
         if any(pack.id not in a.supported_trials for a in adapters):
             raise ServiceError("unsupported_trial_for_provider", 422)
+        if hasattr(pack, "validate_adapter"):
+            try:
+                for adapter in adapters:
+                    pack.validate_adapter(trial, adapter)
+            except (ValueError, TypeError):
+                raise ServiceError("scenario_not_supported_by_provider", 422) from None
         try:
             self.executor.validate(adapters)
         except ValueError:
@@ -224,6 +230,26 @@ class TrialService(EvidenceLifecycle):
             self._audit(db, tenant, "run_submitted", run_id, {"request_hash": request_hash})
         self.wake.set()
         return {"run_id": run_id, "state": "queued"}
+
+    def validate_trial(self, tenant, spec, candidates):
+        self._adapters(tenant, candidates)  # Enforce authorization before returning authoring diagnostics.
+        try:
+            if len(canonical({"test": spec, "candidates": candidates}).encode()) > 65536:
+                raise ServiceError("request_too_large", 413)
+            builtins().prepare(spec)
+        except (ValueError, TypeError, RecursionError) as error:
+            return {"valid": False, "issues": [{"code": "invalid_definition", "message": str(error)[:200]}],
+                    "execution_performed": False, "provider_access_checked": False}
+        try:
+            context = self._context(tenant, spec, candidates)
+        except ServiceError as error:
+            if error.status != 422:
+                raise
+            return {"valid": False, "issues": [{"code": error.code}],
+                    "execution_performed": False, "provider_access_checked": False}
+        return {"valid": True, "pack_id": context["pack_id"], "pack_version": context["pack_version"],
+                "test_hash": fingerprint(spec), "candidates": candidates, "issues": [],
+                "execution_performed": False, "provider_access_checked": False}
 
     def _row(self, tenant, run_id):
         if not isinstance(run_id, str) or not re.fullmatch(r"[a-f0-9]{32}", run_id):
@@ -328,7 +354,8 @@ class TrialService(EvidenceLifecycle):
         for name, factory in self.tenants[tenant].providers.items():
             try:
                 adapter = factory()
-                capabilities[name] = {"configured": True, "supported_trials": sorted(adapter.supported_trials)}
+                capabilities[name] = {"configured": True, "supported_trials": sorted(adapter.supported_trials),
+                    **({"operations": adapter.describe_operations()} if hasattr(adapter, "describe_operations") else {})}
             except (ValueError, OSError):
                 capabilities[name] = {"configured": False, "supported_trials": []}
         return {"packages": builtins().describe(), "providers": sorted(self.tenants[tenant].providers),

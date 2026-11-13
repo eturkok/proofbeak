@@ -15,6 +15,7 @@ from proofbeak.adapters.google import GoogleCalendarAdapter
 from proofbeak.adapters.radicale import RadicaleAdapter
 from proofbeak.adapters.simulation import SimulationAdapter
 from proofbeak.adapters.webdav import WebDAVAdapter
+from proofbeak.adapters.scenario import JSONReadConnector, ScenarioAdapter
 from proofbeak.models import keys
 from proofbeak.recovery import RecoveryError
 from proofbeak.executor import SubprocessExecutor, WorkerLimits
@@ -22,6 +23,16 @@ from proofbeak.service import Tenant, TrialService
 
 
 def provider_factory(name, settings, root, tenant_id):
+    if name.startswith("scenario:"):
+        inner = name[len("scenario:"):]
+        if inner.startswith("http:"):
+            keys(settings, {"endpoint", "routes"}, "read-only HTTP scenario settings")
+            JSONReadConnector(inner, settings["endpoint"], settings["routes"])
+            return lambda: ScenarioAdapter(JSONReadConnector(inner, settings["endpoint"], settings["routes"]))
+        if inner != "filesystem" and not inner.startswith("webdav:"):
+            raise ValueError("unregistered scenario connector")
+        backend = provider_factory(inner, settings, root, tenant_id)
+        return lambda: ScenarioAdapter(backend())
     if name == "filesystem":
         keys(settings, set(), "filesystem settings")
         return lambda: FilesystemAdapter(root / "provider-data" / tenant_id / "objects")

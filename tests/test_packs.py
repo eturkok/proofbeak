@@ -63,7 +63,7 @@ class PackTests(unittest.TestCase):
 
     def test_packages_listed(self):
         self.assertEqual({p["id"] for p in builtins().describe()},
-                         {"calendar.move_one.v1", "storage.put_same_key.v1"})
+                         {"calendar.move_one.v1", "storage.put_same_key.v1", "scenario.v1"})
 
     def test_unknown_package_cannot_import_code(self):
         self.spec["id"] = "os.system"

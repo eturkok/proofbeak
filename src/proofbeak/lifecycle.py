@@ -25,6 +25,8 @@ def redact_report(report):
     for candidate in redacted["candidates"]:
         candidate["evidence"] = None
         candidate["raw_retained"] = False
+        for check in candidate.get("checks", []):
+            check["expected"], check["observed"], check["redacted"] = None, None, True
     return redacted
 
 

@@ -18,6 +18,9 @@ def run_trial(spec: dict, adapters: list[Adapter], store: Store, key: str,
         raise ValueError("provide one to four distinct candidates")
     if any(pack.id not in adapter.supported_trials for adapter in adapters):
         raise ValueError("candidate does not support the requested trial package")
+    if hasattr(pack, "validate_adapter"):
+        for adapter in adapters:
+            pack.validate_adapter(trial, adapter)
     context = [{"name": a.name, "version": a.version, "profile": a.profile,
                 "evidence_level": a.evidence_level} for a in adapters]
     request_hash = fingerprint({"test": spec, "candidates": context,

@@ -39,7 +39,7 @@ def render_html(report: dict) -> str:
                       f'provider HTTP attempts: {escape(measurements["provider_http_attempts"])}. '
                       'External agent tokens and cost: unmeasured.</p>')
         rows = "".join(
-            f'<tr><th>{escape(c["field"])}</th><td>{escape(c["expected"])}</td>'
+            f'<tr><th>{escape(c["field"])}</th><td>{escape(c.get("operator", "eq"))}</td><td>{escape(c["expected"])}</td>'
             f'<td>{escape(c["observed"])}</td><td>{"✓" if c["passed"] else "×"}</td></tr>'
             for c in candidate["checks"])
         cards.append(
@@ -47,7 +47,7 @@ def render_html(report: dict) -> str:
             f'<h2>{escape(candidate["provider"])}</h2>'
             f'<p class="verdict {escape(candidate["verdict"])}">{escape(candidate["verdict"])}</p>'
             f'<p>{escape(candidate["reason_code"])}</p>'
-            '<div class="scroll"><table><thead><tr><th>Condition</th><th>Expected</th>'
+            '<div class="scroll"><table><thead><tr><th>Condition</th><th>Operator</th><th>Expected</th>'
             f'<th>Observed</th><th>Result</th></tr></thead><tbody>{rows}</tbody></table></div>'
             f'<p>Cleanup: {escape(candidate["cleanup_status"])}</p>'
             f'{timing}'
