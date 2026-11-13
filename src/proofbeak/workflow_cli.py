@@ -10,6 +10,17 @@ from proofbeak.suites import example_suite, exit_code, expand_suite, run_suite
 
 
 def add_commands(commands):
+    connector = commands.add_parser("connector", help="scaffold and qualify trusted installed connector packages")
+    actions = connector.add_subparsers(dest="connector_command", required=True)
+    actions.add_parser("list", help="list installed entry points without loading their code")
+    init = actions.add_parser("init")
+    init.add_argument("directory", type=Path)
+    init.add_argument("--name", required=True)
+    qualify = actions.add_parser("qualify")
+    qualify.add_argument("spec", type=Path)
+    qualify.add_argument("--providers", type=Path, required=True)
+    qualify.add_argument("--candidate", required=True)
+    qualify.add_argument("--output", type=Path, required=True)
     suite = commands.add_parser("suite", help="compose, validate and run acceptance test packages")
     actions = suite.add_subparsers(dest="suite_command", required=True)
     example = actions.add_parser("example", help="create an editable parameterized suite")
@@ -61,6 +72,23 @@ def outputs_safe(outputs, inputs):
 
 
 def main(args):
+    if args.command == "connector":
+        from proofbeak.connector_sdk import list_plugins, qualify, scaffold
+        if args.connector_command == "list":
+            print(json.dumps({"plugins": list_plugins()}))
+            return 0
+        if args.connector_command == "init":
+            print(json.dumps(scaffold(args.directory, args.name)))
+            return 0
+        outputs_safe([args.output], [args.spec, args.providers])
+        from proofbeak.cli import adapters_for
+        adapter = adapters_for([args.candidate], args.providers)[0]
+        if not hasattr(adapter, "backend"):
+            raise ValueError("Choose a capability connector candidate.")
+        report = qualify(adapter.backend, read_report(args.spec, 65536))
+        write_private(args.output, json.dumps(report, indent=2, ensure_ascii=False) + "\n")
+        print(json.dumps({"gate": report["gate"], "output": str(args.output), "cleanup_ledger": report["cleanup_ledger"]}))
+        return exit_code(report)
     if args.command == "suite":
         if args.suite_command == "example":
             write_private(args.output, json.dumps(example_suite(), indent=2, ensure_ascii=False) + "\n", overwrite=False)

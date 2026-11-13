@@ -36,6 +36,12 @@ class ComparisonRequest(BaseModel):
     allow_provider_version_change: bool = False
 
 
+class BundleVerificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    bundle: dict
+    public_key: dict
+
+
 class BodyLimit:
     def __init__(self, app, limit=65536):
         self.app, self.limit = app, limit
@@ -43,11 +49,12 @@ class BodyLimit:
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope["method"] not in {"POST", "PUT", "PATCH"}:
             return await self.app(scope, receive, send)
+        limit = 16 * 1024 * 1024 if scope.get("path") == "/bundles/verify" else self.limit
         messages, size = [], 0
         while True:
             message = await receive()
             size += len(message.get("body", b""))
-            if size > self.limit:
+            if size > limit:
                 return await JSONResponse({"detail": "request_too_large"}, status_code=413)(scope, receive, send)
             messages.append(message)
             if message["type"] == "http.disconnect" or not message.get("more_body", False):
@@ -142,6 +149,24 @@ def create_app(service: TrialService, background=True):
         read = service.get_suite if body.kind == "suite" else service.comparison
         return compare_reports(read(owner, body.baseline), read(owner, body.current), body.allow_provider_version_change)
 
+    @app.get("/signing")
+    def signing(owner: str = Depends(tenant)):
+        from proofbeak.exports import signing_status
+        return signing_status()
+
+    @app.post("/bundles/verify")
+    def verify_export(body: BundleVerificationRequest, owner: str = Depends(tenant)):
+        from proofbeak.bundles import verify_bundle
+        try:
+            return verify_bundle(body.bundle, body.public_key)
+        except (ValueError, TypeError, KeyError, RecursionError):
+            raise ServiceError("bundle_verification_failed", 422) from None
+
+    @app.post("/suites/{suite_id}/bundle")
+    def export_signed_suite(suite_id: str, owner: str = Depends(tenant)):
+        from proofbeak.exports import signed_export
+        return signed_export(service, owner, suite_id, "suite")
+
     @app.post("/runs", status_code=202)
     def submit(body: RunRequest, owner: str = Depends(tenant),
                key: str = Header(alias="Idempotency-Key", min_length=1, max_length=128)):
@@ -172,6 +197,23 @@ def create_app(service: TrialService, background=True):
     @app.get("/runs/{run_id}/comparison")
     def comparison(run_id: str, owner: str = Depends(tenant)):
         return service.comparison(owner, run_id)
+
+    @app.get("/runs/{run_id}/export")
+    def export_trial(run_id: str, format: str = "json", owner: str = Depends(tenant)):
+        from proofbeak.exports import portable_report
+        from proofbeak.models import canonical
+        from proofbeak.report import render_html
+        if format not in {"json", "html"}:
+            raise ServiceError("invalid_export_format", 422)
+        report = portable_report(service, owner, run_id)
+        return Response(canonical(report) if format == "json" else render_html(report),
+            media_type="application/json" if format == "json" else "text/html",
+            headers={"Content-Disposition": f'attachment; filename="proofbeak-{run_id}.{format}"', "Cache-Control": "no-store"})
+
+    @app.post("/runs/{run_id}/bundle")
+    def export_signed_trial(run_id: str, owner: str = Depends(tenant)):
+        from proofbeak.exports import signed_export
+        return signed_export(service, owner, run_id)
 
     @app.get("/evidence/{evidence_id}")
     def evidence(evidence_id: str, owner: str = Depends(tenant)):

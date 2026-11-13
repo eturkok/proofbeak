@@ -182,6 +182,21 @@ def create_server(client):
         return call("POST", "/comparisons", {"baseline": baseline, "current": current, "kind": kind,
                     "allow_provider_version_change": allow_provider_version_change})
 
+    @server.tool(annotations=read_only, structured_output=True)
+    def get_signing_key() -> dict[str, Any]:
+        """Read the authenticated service's public signing-key fingerprint; no private key is exposed."""
+        return call("GET", "/signing")
+
+    @server.tool(annotations=read_only, structured_output=True)
+    def export_evidence_bundle(identity: str, kind: str = "trial") -> dict[str, Any]:
+        """Export a signed raw-evidence record; independently pin the public key for offline verification."""
+        if kind not in {"trial", "suite"}:
+            raise ValueError("Choose trial or suite.")
+        path = client.run_path(identity)
+        if kind == "suite":
+            path = path.replace("/runs/", "/suites/", 1)
+        return call("POST", path + "/bundle")
+
     return server
 
 

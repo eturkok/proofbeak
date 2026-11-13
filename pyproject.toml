@@ -33,7 +33,8 @@ Changelog = "https://github.com/eturkok/proofbeak/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 calendar = ["icalendar>=6.1,<8"]
 dev = ["ruff>=0.9,<1", "radicale>=3.5,<4", "jsonschema>=4.23,<5"]
-agents = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.34,<1", "mcp>=1.26,<2", "httpx>=0.28,<1"]
+agents = ["fastapi>=0.115,<1", "pydantic>=2.10,<3", "uvicorn>=0.34,<1", "mcp>=1.26,<2", "httpx>=0.28,<1", "cryptography>=44,<51"]
+signing = ["cryptography>=44,<51"]
 connectors = ["jsonschema>=4.23,<5", "mcp>=1.26,<2"]
 postgres = ["psycopg[binary]>=3.2,<4"]
 

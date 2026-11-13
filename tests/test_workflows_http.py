@@ -3,6 +3,7 @@ import importlib.util
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from proofbeak.adapters.filesystem import FilesystemAdapter
@@ -60,6 +61,29 @@ class WorkflowHttpTests(unittest.TestCase):
         self.assertEqual(self.client.post("/suites", json={"suite": example_suite()}).status_code, 401)
         self.assertEqual(self.client.get("/suites/" + "b" * 32, headers=self.headers).status_code, 404)
         self.assertEqual(self.client.post("/suites/validate", json={"suite": example_suite(), "extra": True}, headers=self.headers).status_code, 422)
+
+    @unittest.skipUnless(importlib.util.find_spec("cryptography"), "install signing for signed HTTP exports")
+    def test_signed_suite_export_and_explicit_public_key_verification(self):
+        from proofbeak.bundles import generate_keys
+        private, public = self.service.root.parent / "private.json", self.service.root.parent / "public.json"
+        document = generate_keys(private, public)
+        suite_id = self.submit()
+        while self.service.process_next():
+            pass
+        self.assertEqual(self.client.post(f"/suites/{suite_id}/bundle", headers=self.headers).status_code, 409)
+        with patch.dict(os.environ, {"PROOFBEAK_SIGNING_KEY_FILE": str(private)}):
+            status = self.client.get("/signing", headers=self.headers).json()
+            self.assertTrue(status["configured"])
+            self.assertNotIn("private_key", status["public_key"])
+            bundle = self.client.post(f"/suites/{suite_id}/bundle", headers=self.headers)
+            self.assertEqual(bundle.status_code, 200, bundle.text)
+            verified = self.client.post("/bundles/verify", json={"bundle": bundle.json(), "public_key": document}, headers=self.headers)
+            self.assertTrue(verified.json()["signature_valid"])
+            self.assertEqual(verified.json()["acceptance_gate"], "pass")
+            corrupted = bundle.json()
+            corrupted["payload"]["report"]["name"] = "modified"
+            rejected = self.client.post("/bundles/verify", json={"bundle": corrupted, "public_key": document}, headers=self.headers)
+            self.assertEqual(rejected.status_code, 422)
 
 
 if __name__ == "__main__":

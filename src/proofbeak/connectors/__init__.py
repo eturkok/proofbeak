@@ -83,6 +83,17 @@ class ScopedConnector(Connector):
 
 
 def build_connector(name, settings, secrets=None):
+    if isinstance(settings, dict) and isinstance(settings.get("kind"), str) and settings["kind"].startswith("plugin:"):
+        from proofbeak.connector_sdk import load_plugin
+        constructor, metadata = load_plugin(settings["kind"].split(":", 1)[1])
+        if not isinstance(settings.get("connection"), dict) or not isinstance(settings.get("operations"), dict):
+            raise ValueError("Installed plugins need an operator-owned connection and operation catalog.")
+        connector = constructor(name, settings, secrets)
+        for method in ("provision", "invoke", "cleanup"):
+            if not callable(getattr(connector, method, None)):
+                raise ValueError("Installed connector is missing its lifecycle contract.")
+        connector.profile = {**connector.profile, "plugin": metadata}
+        return connector
     from proofbeak.connectors.rest import RESTConnector
     from proofbeak.connectors.sql import SQLConnector
     from proofbeak.connectors.stream import RedisConnector

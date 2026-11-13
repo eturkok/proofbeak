@@ -126,8 +126,16 @@ def summarize(entries, state="completed"):
                 code = "evidence_integrity_failed"
             elif candidate.get("validity", {}).get("reasons") and any(
                     item in candidate["validity"]["reasons"] for item in
-                    ("integrity_failed", "revoked", "raw_purged", "raw_evidence_purged", "invalid_timestamp", "invalid_expiry")):
+                    ("integrity_failed", "revoked", "raw_purged", "raw_evidence_purged", "invalid_timestamp", "invalid_expiry",
+                     "expired", "context_changed", "context_unavailable")):
                 code = "evidence_unavailable"
+            if code is None:
+                try:
+                    expiry = datetime.fromisoformat(candidate["expires_at"])
+                    if expiry.tzinfo is None or expiry <= datetime.now(UTC):
+                        code = "evidence_expired"
+                except (ValueError, TypeError, KeyError):
+                    code = "invalid_freshness_metadata"
             if code:
                 issues.append({"entry": entry["id"], "candidate": candidate["provider"], "code": code})
     gate = "running" if state in {"queued", "running"} else (

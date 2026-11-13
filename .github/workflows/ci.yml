@@ -94,6 +94,12 @@ jobs:
       - run: python tests/test_workflows_http.py -v
         env:
           PROOFBEAK_REQUIRE_INTERFACES: '1'
+      - run: python tests/test_bundles.py -v
+        env:
+          PROOFBEAK_REQUIRE_SIGNING: '1'
+      - run: python tests/test_connector_sdk.py -v
+        env:
+          PROOFBEAK_REQUIRE_SDK: '1'
       - run: python tests/test_mcp_integration.py -v
         env:
           PROOFBEAK_REQUIRE_INTERFACES: '1'
