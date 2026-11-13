@@ -13,9 +13,11 @@ from proofbeak.adapters.filesystem import FilesystemAdapter
 from proofbeak.adapters.scenario import JSONReadConnector, ScenarioAdapter
 from proofbeak.engine import run_trial
 from proofbeak.executor import SubprocessExecutor
+from proofbeak.lifecycle import redact_report
 from proofbeak.models import fingerprint
 from proofbeak.packs import builtins
 from proofbeak.packs.scenario import ScenarioPack, conditions
+from proofbeak.report import render_html
 from proofbeak.service import ServiceError, Tenant, TrialService
 from proofbeak.store import IdempotencyConflict, Store
 from proofbeak.worker_adapters import decode_adapter, encode_adapter
@@ -86,6 +88,24 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(row["reason_code"], "invalid_baseline")
         self.assertFalse(any(event["phase"] == "steps" for event in row["evidence"]["before"]["events"]))
         self.assertEqual(row["evidence"]["before"]["baseline_checks"][0]["observed"], 2)
+
+    def test_report_explains_baseline_failure_and_missing_data_without_rendering_user_html(self):
+        self.spec["name"] = '<script>scenario</script>'
+        self.spec["require"][0]["value"] = 9
+        report = run_trial(self.spec, [self.adapter], self.store, "report-baseline")
+        rendered = render_html(report)
+        self.assertIn("Initial requirements", rendered)
+        self.assertIn("initial_count", rendered)
+        self.assertIn("invalid_baseline", rendered)
+        self.assertNotIn("<script>", rendered)
+        self.assertIn("&lt;script&gt;scenario", rendered)
+        self.spec["require"] = []
+        self.spec["expect"] = [{"name": "missing", "actual": ["after", "target", "content"],
+                                "op": "ne", "value": "anything"}]
+        report = run_trial(self.spec, [self.adapter], self.store, "report-missing")
+        self.assertIn("unavailable", render_html(report))
+        self.assertIn("inconclusive", render_html(redact_report(report)))
+        self.assertNotIn("&lt;script&gt;scenario", render_html(redact_report(report)))
 
     def test_missing_runtime_reference_stops_steps_and_retains_partial_evidence(self):
         self.spec["steps"] = [

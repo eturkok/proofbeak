@@ -3,6 +3,20 @@
 Proofbeak is a generic execution and evidence product. Its behavior is assembled from a
 common worker, explicit domain packages, and compatible provider adapters.
 
+## Users compose scenarios; developers extend capabilities
+
+For a new acceptance condition, start with [user-defined scenarios](scenarios.md), not a new
+Python package. `scenario.v1` is a reusable definition format: callers supply their own
+preparation, operations, independent observations and conditions. The example files are
+templates, not an execution allowlist. Available connectors expose object put/get/list/delete
+or operator-configured HTTP JSON GET operations. Discovery publishes the input schema and
+candidate operations; `validate_trial` checks a caller's definition without executing it.
+
+Adding a new protocol or operation is trusted developer work. The package and adapter
+contracts below explain that boundary. Existing `storage.put_same_key.v1` and
+`calendar.move_one.v1` remain available for compatibility; their fixed condition schemas do
+not limit what a caller can compose with `scenario.v1`.
+
 ## Common worker contract
 
 `run_trial(spec, adapters, store, key, registry=None)` obtains a trusted package from its
@@ -30,10 +44,15 @@ A package declares `id` and `version` and implements:
 | `valid_baseline(trial, before)` | Check the first independent read against the fixture. |
 | `assess(trial, before, after)` | Derive domain metrics from observations and return verdict, reason, and checks. |
 
-Both built-in packages use the common `evaluate()` function for strict metric comparison.
+The fixed storage/calendar packages use the common `evaluate()` function for strict metric comparison.
 A missing metric is inconclusive. A measured value that violates its expected value fails.
 The package is responsible for supplying complete and honest metrics; the common evaluator
 does not make an arbitrary package trustworthy.
+
+The scenario package uses strict bounded predicates over independently observed paths,
+validates candidate capabilities before reservation, and exposes a machine-readable
+`input_schema`. It does not add case-specific branches to the worker. Scenario definitions
+cannot use write acknowledgements as their acceptance observations.
 
 Package registration is a developer-controlled allowlist. The CLI lists built-ins with
 `proofbeak packs`. Python callers can supply another `PackRegistry` of trusted package
@@ -62,5 +81,9 @@ inject duplicate files and changed content and verify that these cannot pass. An
 test registers a scalar-only package whose prepared value is an integer and whose adapter
 has no calendar model or move method; it runs through the unchanged worker.
 
-This establishes an extension boundary. Supporting a new service category still requires
-a carefully implemented package and adapter, plus real-provider validation.
+User-defined scenarios additionally exercise several different JSON definitions through the
+same pack and two actual WebDAV services over MCP/REST. A caller changes only an expectation
+and obtains a measured failure. Real HTTP JSON fixtures map different raw response shapes
+to the same observed fields. These checks establish composition within the published
+capabilities. A new unsupported protocol/operation needs a carefully implemented connector
+and real-provider validation; a new composition of supported operations does not.

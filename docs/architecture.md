@@ -1,7 +1,9 @@
 # Trial architecture
 
 Proofbeak is a generic acceptance-trial service. The external agent/model runtime supplies a
-closed condition and candidates; registered packages define the domain. The CLI can execute
+closed scenario definition and candidates; registered connectors supply trusted operations.
+The reusable `scenario.v1` package interprets caller-defined preparation, operations,
+independent reads and conditions. The CLI can execute
 synchronously, while REST/MCP use a tenant-bound durable queue and bounded worker subprocesses.
 The local image and the filesystem package require no inference service or product account.
 
@@ -28,8 +30,11 @@ flowchart TD
 
 ## Execution and trust boundaries
 
-The versioned calendar and storage packages own their closed schemas, baseline validation and
-domain metrics. The core engine owns reservation, provenance, ordering, independent reads,
+The versioned scenario package owns its bounded schema, references, baseline validation and
+predicates; fixed calendar/storage packages retain their existing schemas and metrics.
+Discovery exposes the schema and configured candidate capabilities. Validation checks them
+without provider requests or job creation. Caller JSON cannot register a new operation.
+The core engine owns reservation, provenance, ordering, independent reads,
 cleanup and result persistence. Trial requests cannot import code, select arbitrary URLs,
 supply credentials, choose executables or bypass a tenant provider allowlist. Operators register
 trusted adapters and worker codecs explicitly.

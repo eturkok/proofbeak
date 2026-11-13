@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.5.0 — 2026-11-13
+
+Callers can now define their own acceptance scenarios instead of adding a Python package
+for every condition. A single `scenario.v1` format describes preparation, action sequences,
+independent before/after reads, initial requirements and acceptance predicates. The original
+fixed storage/calendar packages and their request contracts remain compatible.
+
+### Added
+
+- Reusable object put/get/list/delete capabilities over the actual filesystem and WebDAV
+  connectors, with generated disposable scopes and separate cleanup status.
+- Public/read-only HTTP JSON GET capabilities over operator-configured origins and named
+  routes. Optional JSON field projections preserve raw responses and let the same condition
+  address differently shaped provider data. Client URLs, headers, credentials and arbitrary
+  methods are unsupported.
+- Machine-readable scenario input schema, operation/route discovery, CLI capability
+  validation, authenticated `POST /trials/validate` and the twelfth MCP tool `validate_trial`.
+  Validation creates no work and makes no provider request; it does not establish provider
+  availability or satisfaction of the condition.
+- Bounded references, strict predicates, captured operation traces and independent reads.
+  Missing values cannot pass inequality or equality to null; failed preconditions stop
+  actions; unknown outcomes and exhausted budgets stay inconclusive. HTML reports show
+  scenario names, initial requirements and unavailable observations.
+- Three editable JSON examples and an authoring guide covering custom conditions, two-service
+  execution, capability boundaries and history/idempotency behavior.
+- Mandatory real MCP/REST/worker verification of three definitions and a caller-modified
+  failing expectation on both WsgiDAV and Apache. Independent journals verify scoped writes,
+  cleanup, and mutation-free validation/reads/retries. Actual HTTP JSON fixture tests verify
+  different response shapes, changed caller predicates, missing fields and error handling.
+
+### Changed
+
+- Raw-evidence retention also removes assertion expected/observed values, which can now
+  contain user data. Existing verdicts and integrity metadata remain available.
+- Package and application versions are 0.5.0; Helm chart is 0.3.0. Upgrade with the same
+  stopped-service snapshot/configuration-check procedure as 0.4.0. No runtime dependency or
+  database schema migration is introduced.
+
+New conditions within supported capabilities need only JSON; unsupported protocols or
+operations still require trusted connector development and actual-provider verification.
+This release retains the controlled single-coordinator scope. It does not introduce an
+unrestricted workflow/code runtime, natural-language compiler, HTTP write connector or
+human adoption/decision-quality claim.
+
 ## 0.4.0 — 2026-11-13
 
 Stable release for controlled, single-coordinator self-hosted use. Existing closed trial,

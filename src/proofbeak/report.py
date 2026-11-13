@@ -29,6 +29,15 @@ def render_html(report: dict) -> str:
     def escape(value):
         return html.escape(str(value), quote=True)
 
+    def check_table(checks):
+        rows = "".join(
+            f'<tr><th>{escape(c["field"])}</th><td>{escape(c.get("operator", "eq"))}</td>'
+            f'<td>{escape(c["expected"])}</td><td>{escape(c["observed"])}</td>'
+            f'<td>{"unavailable" if c.get("available") is False else ("✓" if c["passed"] else "×")}</td></tr>'
+            for c in checks)
+        return ('<div class="scroll"><table><thead><tr><th>Condition</th><th>Operator</th><th>Expected</th>'
+                f'<th>Observed</th><th>Result</th></tr></thead><tbody>{rows}</tbody></table></div>')
+
     cards = []
     for candidate in report["candidates"]:
         measurements = candidate.get("measurements", {})
@@ -38,17 +47,15 @@ def render_html(report: dict) -> str:
                       f'{escape(measurements["cpu_seconds"])} s worker CPU; '
                       f'provider HTTP attempts: {escape(measurements["provider_http_attempts"])}. '
                       'External agent tokens and cost: unmeasured.</p>')
-        rows = "".join(
-            f'<tr><th>{escape(c["field"])}</th><td>{escape(c.get("operator", "eq"))}</td><td>{escape(c["expected"])}</td>'
-            f'<td>{escape(c["observed"])}</td><td>{"✓" if c["passed"] else "×"}</td></tr>'
-            for c in candidate["checks"])
+        before = (candidate.get("evidence") or {}).get("before") or {}
+        baseline = before.get("baseline_checks", [])
+        preconditions = '<h3>Initial requirements</h3>' + check_table(baseline) if baseline else ""
         cards.append(
             f'<article><p class="eyebrow">{escape(candidate["evidence_level"])}</p>'
             f'<h2>{escape(candidate["provider"])}</h2>'
             f'<p class="verdict {escape(candidate["verdict"])}">{escape(candidate["verdict"])}</p>'
             f'<p>{escape(candidate["reason_code"])}</p>'
-            '<div class="scroll"><table><thead><tr><th>Condition</th><th>Operator</th><th>Expected</th>'
-            f'<th>Observed</th><th>Result</th></tr></thead><tbody>{rows}</tbody></table></div>'
+            f'{preconditions}<h3>Acceptance conditions</h3>{check_table(candidate["checks"])}'
             f'<p>Cleanup: {escape(candidate["cleanup_status"])}</p>'
             f'{timing}'
             f'<p class="hash">Evidence SHA-256: {escape(candidate["evidence_hash"])}</p>'
@@ -75,4 +82,6 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0c182b;padding:16px}
 <p class="notice">Simulation results are fault-injection controls and cannot establish provider
 capability. A pass describes only this trial in the recorded context. Evidence hashes detect changes;
 they are not signatures or certification.</p>''' + \
+        (f'<p>{escape(report["test"]["name"])}</p>' if isinstance(report.get("test"), dict)
+         and "name" in report["test"] else "") + \
         f'<p class="hash">Run {escape(report["run_id"])}</p>' + "".join(cards) + "</html>"

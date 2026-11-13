@@ -8,9 +8,14 @@ Proofbeak, bir servisin belirli bir ihtiyacı gerçekten karşılayıp karşıla
 kontrol eden bir test ve kanıt servisidir. Kendi altyapınızda çalışır. Geliştiriciler ve
 yapay zekâ ajanları, bir servisi veya aracı kullanmaya karar verirken bu sonuçlardan yararlanır.
 
-Desteklenen bir koşulu, küçük bir test verisini ve aday servisleri verirsiniz. Proofbeak aynı
+Kendi senaryonuzu, küçük bir test verisini ve aday servisleri verirsiniz. Proofbeak aynı
 denemeyi her adayda çalıştırır, oluşan durumu okur ve her servis için sonucu gerekçesiyle döndürür.
 Ajanlar MCP veya REST üzerinden kullanabilir; geliştirici de komut satırından çalıştırabilir.
+
+Hazırlığı, yapılacak işlemleri, bağımsız okumaları ve beklediğiniz sonuçları JSON ile
+tanımlarsınız. **Her yeni koşul için ürüne Python koduyla yeni bir case eklemek gerekmez.**
+Mevcut bağlantıların sunduğu işlemleri birleştirerek kendi testinizi oluşturursunuz.
+[Kendi senaryonuzu tanımlama rehberi](docs/scenarios.md).
 
 ## Somut bir örnek
 
@@ -41,9 +46,9 @@ eşzamanlı yazma güvenliği veya çökme sonrası dayanıklılık iddiası olu
 
 | Girdi | Örnek |
 | --- | --- |
-| Kayıtlı bir test paketinden koşul | Tekrar yazmadan sonra nesne sayısı, anahtar ve içerik korunsun |
+| Kendi senaryonuz ve kabul koşullarınız | Bir nesneyi silince diğeri korunsun; içeriği güncelleyin veya yazmayı tekrarlayın |
 | Küçük, geçici test verisi | `probe.txt` ve seçtiğiniz içerik |
-| Yapılandırılmış aday servis kimlikleri | `webdav:wsgidav`, `webdav:apache` |
+| Yapılandırılmış aday servis kimlikleri | `scenario:webdav:wsgidav`, `scenario:webdav:apache` |
 
 Her adayın sonucu ayrı döner:
 
@@ -69,7 +74,8 @@ inceleyerek verir. Proofbeak gözlenen davranışı ve kanıtını sunar.
 ## Bir ajan nasıl kullanır?
 
 Operatör izin verilen test servislerini yapılandırır; sağlayıcı kimlik bilgileri sunucuda kalır.
-Ajan kullanılabilir test paketlerini keşfeder, koşulu ve adayları gönderir, işlemin bitmesini
+Ajan kullanılabilir işlemleri ve senaryo şemasını keşfeder, tanımını sağlayıcılara erişmeden
+doğrulatır, senaryoyu ve adayları gönderir, işlemin bitmesini
 bekler, karşılaştırmayı ve kanıtları MCP veya REST üzerinden okur.
 
 Aynı istek ve anahtarla tekrar çağrı yapıldığında eski run döner. Uygun geçmiş kanıtlar aynı
@@ -81,18 +87,29 @@ doğrulama ve rapor dışa aktarma akışını çalıştırılabilir komutlarla 
 
 ## Bugün neleri destekliyor?
 
-**0.4.0** sürümünde iki kayıtlı test paketi var:
+**0.5.0** sürümünde kullanıcı kendi senaryosunu şu ortak işlemlerle tanımlayabilir:
+
+| Yetenek | Adaylar | Sizin belirlediğiniz |
+| --- | --- | --- |
+| Nesne yazma/okuma/listeleme/silme | Yerel filesystem; WebDAV üzerinden WsgiDAV ve Apache | Hazırlık, işlem sırası ve bağımsız okunan duruma uygulanacak koşullar |
+| İsimlendirilmiş HTTP GET ve JSON alan eşleme | Operatörün tanımladığı herkese açık JSON servisleri | Okunacak izinli uçlar ve gerçek yanıt alanlarında kontrol edilecek koşullar |
+
+Her tanımda `scenario.v1` kullanılır; bu bir case adı değil, tanım biçiminin sürümüdür.
+Repodaki senaryolar değiştirilebilir örneklerdir. Yeni bir protokol veya işlem için güvenilir
+bir bağlantı geliştirmek gerekir; mevcut işlemlerle yeni bir koşul kurmak için JSON yeterlidir.
+İlk HTTP bağlantısı yalnızca okuma yapar; kimlik doğrulama veya özel header tanımı desteklemez.
+[Senaryo yazımı, sınırlar ve iki servisle çalıştırma](docs/scenarios.md).
+
+Önceki sabit test paketleri de uyumluluk için kullanılabilir:
 
 | Paket | Kontrol edilen davranış | Adaptörler |
 | --- | --- | --- |
 | `storage.put_same_key.v1` | Tekrar yazmada nesne sayısı, anahtar ve içeriğin korunması | Yerel filesystem referansı; WebDAV üzerinden WsgiDAV ve Apache |
 | `calendar.move_one.v1` | Tekrarlayan bir etkinliğin bir oluşumunu taşırken diğer oluşumları ve sürelerini korumak | Gerçek Radicale entegrasyonu; protokol testleri olan, canlı doğrulaması henüz yapılmamış isteğe bağlı Google adaptörü |
 
-Depolama, ürünün ilk kullanım örneği. Test motoru, kanıt yaşam döngüsü ve ajan arayüzleri
-paketler arasında ortak. Yeni bir koşul veya servis için geliştiricinin güvenilir bir test
-paketi ve/veya adaptör ekleyip doğrulaması gerekir. İstekler kapalı JSON tanımları kullanır;
+Test motoru, kanıt yaşam döngüsü ve ajan arayüzleri ortaktır. İstekler sınırlı JSON tanımları kullanır;
 bu sürüm rastgele doğal dil taleplerini otomatik teste çevirmez veya rastgele kod çalıştırmaz.
-[Paket ve adaptör ekleme sözleşmesi](docs/trial-packs.md).
+[Yeni bağlantı geliştirme sözleşmesi](docs/trial-packs.md).
 
 ## Yerelde deneyin
 
@@ -100,8 +117,10 @@ Repo kökünden, Linux/macOS ve Python 3.11+ ile gerçek bir filesystem testi ç
 Bu örnek ek Python paketi, bulut hesabı, model servisi veya Docker gerektirmez:
 
 ```bash
-PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
-  --candidate filesystem --key first-trial \
+PYTHONPATH=src python3 -m proofbeak validate examples/scenario.delete_and_preserve.json \
+  --candidate scenario:filesystem
+PYTHONPATH=src python3 -m proofbeak run examples/scenario.delete_and_preserve.json \
+  --candidate scenario:filesystem --key first-trial \
   --output reports/first-trial.json --html reports/first-trial.html
 ```
 
@@ -109,12 +128,12 @@ PYTHONPATH=src python3 -m proofbeak run examples/storage.put_same_key.v1.json \
 Başarılı bir çalıştırmada komut çıktısında şu satır görünür:
 
 ```text
-filesystem: pass (conditions_met); cleanup=cleaned
+scenario:filesystem: pass (conditions_met); cleanup=cleaned
 ```
 
-Bu deneme yerel filesystem adaptörünü kontrol eder. İki gerçek HTTP servisini karşılaştırmak
-sıradaki adımdır: [WebDAV kurulumu](docs/storage-comparison.md) veya
-[MCP rehberi](docs/mcp-walkthrough.md). Dış sağlayıcılarda ayrı test hesapları/alanları kullanın.
+JSON dosyasını kopyalayıp kendi koşulunuza göre değiştirin ve yeni anahtarla çalıştırın.
+Aynı tanımı iki gerçek servise uygulamak için [senaryo rehberini](docs/scenarios.md) izleyin.
+Dış sağlayıcılarda ayrı test hesapları/alanları kullanın.
 Örnekler sentetik veri kullanır.
 
 ## Kurulum ve sürüm kapsamı
@@ -138,11 +157,12 @@ artış henüz ölçülmemiştir. [Kararlılık kapsamı](docs/stability.md) · 
 
 | Yapmak istediğim | Rehber |
 | --- | --- |
+| Python kodu eklemeden kendi koşulumu tanımlamak | [Kullanıcı senaryoları](docs/scenarios.md) |
 | İki depolama servisini karşılaştırmak | [Depolama testi](docs/storage-comparison.md) |
 | Ajan bağlayıp MCP akışını çalıştırmak | [MCP kullanımı](docs/mcp-walkthrough.md) |
 | REST, tenant ve tool sözleşmelerini incelemek | [Ajan arayüzleri](docs/agent-interfaces.md) |
 | CLI hata kontrollerini, takvim örneğini veya temizliği çalıştırmak | [CLI rehberi](docs/cli-guide.md) |
-| Yeni koşul veya sağlayıcı eklemek | [Test paketleri ve adaptörler](docs/trial-packs.md) |
+| Yeni bağlantı veya protokol geliştirmek | [Test paketleri ve adaptörler](docs/trial-packs.md) |
 | Kanıtı yeniden kullanmak, süresini veya silinmesini yönetmek | [Kanıt yaşam döngüsü](docs/evidence-lifecycle.md) |
 | Yapılandırmayı kontrol etmek, yükseltmek, yedeklemek veya geri yüklemek | [Durum kurtarma](docs/state-recovery.md) |
 | Konteyner veya Helm ile kurmak | [Dağıtım](docs/deployment.md) |
