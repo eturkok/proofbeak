@@ -130,6 +130,26 @@ class SuiteTests(unittest.TestCase):
         self.assertNotIn('<img src=x', rendered)
         self.assertIn('&lt;img', rendered)
 
+    def test_missing_redacted_and_inconsistent_evidence_cannot_open_ci_gate(self):
+        baseline = self.run_suite()
+        for mutation in ("missing", "redacted", "inconsistent"):
+            report = copy.deepcopy(baseline)
+            candidate = report["entries"][0]["report"]["candidates"][0]
+            if mutation == "missing":
+                candidate["evidence"] = None
+            elif mutation == "redacted":
+                candidate["checks"][0]["redacted"] = True
+            else:
+                candidate["checks"][0]["passed"] = False
+            self.assertEqual(gate(report)["gate"], "inconclusive", mutation)
+
+    def test_parent_suite_key_binds_observer_version(self):
+        from unittest.mock import patch
+        self.run_suite()
+        with patch('proofbeak.observer.OBSERVER_VERSION', 'changed'):
+            with self.assertRaises(IdempotencyConflict):
+                self.run_suite()
+
     def test_cli_export_cannot_replace_the_suite_or_operator_profile(self):
         path = self.root / "suite.json"
         path.write_text(json.dumps(self.definition))

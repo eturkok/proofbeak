@@ -352,14 +352,15 @@ class TrialService(EvidenceLifecycle, SuiteService):
         if tenant not in self.tenants:
             raise ServiceError("unauthorized", 401)
         capabilities = {}
-        for name, factory in self.tenants[tenant].providers.items():
+        providers = list(self.tenants[tenant].providers.items())
+        for name, factory in providers:
             try:
                 adapter = factory()
                 capabilities[name] = {"configured": True, "supported_trials": sorted(adapter.supported_trials),
                     **({"operations": adapter.describe_operations()} if hasattr(adapter, "describe_operations") else {})}
             except (ValueError, OSError):
                 capabilities[name] = {"configured": False, "supported_trials": []}
-        return {"packages": builtins().describe(), "providers": sorted(self.tenants[tenant].providers),
+        return {"packages": builtins().describe(), "providers": sorted(name for name, _ in providers),
                 "provider_capabilities": capabilities, "idempotency_key_prefix": self.key_prefix()}
 
     def process_next(self):

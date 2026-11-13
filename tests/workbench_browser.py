@@ -68,7 +68,8 @@ def main():
                 page.get_by_role('button',name='Validate & preview',exact=True).click()
                 expect(page.get_by_role('heading',name='Ready to review',exact=True)).to_be_visible()
                 assert len(service.history('local')['runs'])==before
-                page.screenshot(path=str(reports/'builder-desktop.png'),full_page=True)
+                page.evaluate('window.scrollTo(0,0)')
+                page.screenshot(path=str(reports/'builder-desktop.png'),full_page=False)
                 page.get_by_role('button',name='Run test package',exact=True).click()
                 expect(page.get_by_role('heading',name='Browser acceptance package',exact=True)).to_be_visible(timeout=20000)
                 expect(page.locator('.badge.completed').first).to_be_visible(timeout=20000)
@@ -141,7 +142,7 @@ def main():
                 results.append({'case':'pinned_public_key_verification_and_tamper_rejection','passed':True})
 
                 page.get_by_role('button',name='Overview',exact=True).click()
-                page.get_by_role('button',name='Configure a service',exact=True).click()
+                page.get_by_role('button',name='Configure a service',exact=True).first.click()
                 page.locator('#provider-alias').fill('another-sqlite')
                 page.locator('#provider-kind').select_option('sqlite')
                 page.get_by_role('button',name='Save service profile',exact=True).click()

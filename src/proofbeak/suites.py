@@ -124,6 +124,12 @@ def summarize(entries, state="completed"):
                 code = "real_observation_required"
             elif candidate.get("evidence") is not None and fingerprint(candidate["evidence"]) != candidate.get("evidence_hash"):
                 code = "evidence_integrity_failed"
+            elif candidate.get("evidence") is None and ("evidence_ref" not in candidate or not isinstance(candidate.get("validity"), dict)):
+                code = "evidence_unavailable"
+            elif not candidate.get("checks") or any(check.get("redacted") for check in candidate["checks"]):
+                code = "conditions_unavailable"
+            elif candidate.get("verdict") == "pass" and any(check.get("available") is False or check.get("passed") is not True for check in candidate["checks"]):
+                code = "inconsistent_report"
             elif candidate.get("validity", {}).get("reasons") and any(
                     item in candidate["validity"]["reasons"] for item in
                     ("integrity_failed", "revoked", "raw_purged", "raw_evidence_purged", "invalid_timestamp", "invalid_expiry",
@@ -168,12 +174,23 @@ def run_suite(definition, make_adapters, store, key):
             raise TrialValidationError("A suite candidate is incompatible.", code="invalid_suite", path=[item["case_id"]])
         prepared.append(adapters)
     # A parent reservation prevents reusing a suite key with a changed definition/configuration.
-    context = [[{"name": a.name, "version": a.version, "profile": a.profile,
-                 "evidence_level": a.evidence_level} for a in group] for group in prepared]
+    from proofbeak.observer import OBSERVER_VERSION
+    context = []
+    for item, group in zip(plan, prepared):
+        pack, _ = builtins().prepare(item["test"])
+        context.append({"providers": [{"name": a.name, "version": a.version, "profile": a.profile,
+            "evidence_level": a.evidence_level} for a in group], "pack_id": pack.id, "pack_version": pack.version,
+            "observer_version": OBSERVER_VERSION})
     parent_key = "suite:" + fingerprint(key)
     request_hash = fingerprint({"definition": definition, "context": context})
     parent_id, existing = store.reserve(parent_key, request_hash)
     if existing is not None:
+        if existing.get("schema_version") != REPORT_FORMAT:
+            result = suite_report(definition, [{"id": item["id"], "case_id": item["case_id"],
+                "parameters": item["parameters"], "test_hash": item["test_hash"], "report": None,
+                "run_id": None, "reason_code": "recovery_required"} for item in plan], "interrupted", parent_id)
+            result["reason_code"] = "recovery_required"
+            return result
         return existing
     entries, state = [], "completed"
     for item, adapters in zip(plan, prepared):

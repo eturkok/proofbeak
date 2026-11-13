@@ -3,7 +3,7 @@ name: Trials
 on:
   pull_request:
   push:
-    branches: [main, 'feat/**', 'fix/**']
+    branches: [main]
 
 permissions:
   contents: read

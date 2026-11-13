@@ -37,7 +37,10 @@ def load_plugin(name):
     if point is None:
         raise ValueError("Install the operator-approved connector package in the coordinator and worker.")
     from proofbeak.connectors import Connector
-    constructor = point.load()
+    try:
+        constructor = point.load()
+    except Exception:
+        raise ValueError("Installed connector could not load; check its package and worker environment.") from None
     if not isinstance(constructor, type) or not issubclass(constructor, Connector):
         raise ValueError("Connector entry points must expose a Connector subclass.")
     return constructor, plugin_metadata(point)
@@ -56,7 +59,15 @@ def qualify(connector, scenario):
         raise ValueError("Connector qualification takes a scenario.v2 definition.")
     pack.validate_adapter(trial, adapter)
     profile = canonical(adapter.profile)
-    if any(isinstance(value, str) and len(value) >= 8 and value in profile for value in connector.secrets.values()):
+    def profile_values(value):
+        if isinstance(value, dict):
+            return [text for item in value.values() for text in profile_values(item)]
+        if isinstance(value, list):
+            return [text for item in value for text in profile_values(item)]
+        return [value] if isinstance(value, str) else []
+    literals = profile_values(adapter.profile)
+    if any(isinstance(value, str) and value and (value in literals or len(value) >= 8 and value in profile)
+           for value in connector.secrets.values()):
         raise ValueError("Connector profiles must not include injected credential values.")
     executor = SubprocessExecutor()
     executor.validate([adapter])
