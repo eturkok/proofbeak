@@ -42,9 +42,9 @@ function workspaceHistory(){
     <div class="segmented"><button data-history-kind="suite" class="${state.historyKind==='suite'?'selected':''}">Test packages</button><button data-history-kind="trial" class="${state.historyKind==='trial'?'selected':''}">Individual trials</button></div>
     <div class="history-filters panel pad">
       <label class="field">Search history<input id="history-search" maxlength="120" value="${esc(state.query)}" placeholder="Name or reference"></label>
-      <label class="field">Execution status<select id="history-filter">${options([['all','All statuses'],...['queued','running','completed','interrupted','cancelled'].map(s=>[s,label(s)])],state.filter)}</select></label>
-      <label class="field">Recorded acceptance<select data-history-filter="outcome">${options([['','All outcomes'],['pass','Pass'],['fail','Fail'],['inconclusive','Inconclusive'],['running','Running']],state.outcome)}</select></label>
-      <label class="field">Service<select data-history-filter="provider">${options([['','All services'],...Object.keys(state.catalog.provider_capabilities).map(p=>[p,human(p)])],state.provider)}</select></label>
+      <div class="field"><label for="history-filter">Execution status</label><select id="history-filter">${options([['all','All statuses'],...['queued','running','completed','interrupted','cancelled'].map(s=>[s,label(s)])],state.filter)}</select></div>
+      <div class="field"><label for="history-outcome">Recorded acceptance</label><select id="history-outcome" data-history-filter="outcome">${options([['','All outcomes'],['pass','Pass'],['fail','Fail'],['inconclusive','Inconclusive'],['running','Running']],state.outcome)}</select></div>
+      <div class="field"><label for="history-provider">Service</label><select id="history-provider" data-history-filter="provider">${options([['','All services'],...Object.keys(state.catalog.provider_capabilities).map(p=>[p,human(p)])],state.provider)}</select></div>
       <label class="field">From date (UTC)<input type="date" data-history-filter="since" value="${esc(state.since)}"></label>
       <label class="field">Through date (UTC)<input type="date" data-history-filter="until" value="${esc(state.until)}"></label>
     </div><p class="field-help">Recorded acceptance is historical. Inspect the current evidence gate, freshness and cleanup before relying on a pass.</p>
@@ -157,6 +157,7 @@ async function workspaceAction(button){
   if(action==='confirm-save-template'||action==='confirm-pin-baseline'){
     const template=action==='confirm-save-template',name=document.querySelector('#workspace-item-name').value.trim();
     await api('/workspace/'+(template?'templates':'baselines'),template?{name,suite:state.templateDefinition}:{name,suite_id:state.detailId});
+    if(template){state.builder=clone(state.templateDefinition);state.dirty=false;}
     state.templateDefinition=null;modal.close();await loadData();toast(template?'Template saved.':'Named baseline saved.');return true;
   }
   if(action==='load-template'){const item=await api('/workspace/items/'+button.dataset.item);openDefinition(item.definition);return true;}
