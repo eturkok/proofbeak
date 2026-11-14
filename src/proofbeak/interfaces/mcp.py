@@ -125,10 +125,15 @@ def create_server(client):
         return call("POST", client.run_path(run_id) + "/cancel")
 
     @server.tool(annotations=read_only, structured_output=True)
-    def list_runs(limit: int = 25, before: str | None = None) -> dict[str, Any]:
-        """Read this tenant's bounded run history; use the returned cursor for older rows."""
+    def list_runs(limit: int = 25, before: str | None = None, q: str = "",
+                  state: str | None = None, outcome: str | None = None,
+                  provider: str | None = None, since: str | None = None, until: str | None = None) -> dict[str, Any]:
+        """Search retained tenant history; recorded acceptance is separate from current evidence validity."""
+        filters = {k: v for k, v in {"q": q, "state": state, "outcome": outcome,
+            "provider": provider, "since": since, "until": until}.items() if v}
         query = {"limit": limit, **({"before": before} if before else {})}
-        return call("GET", "/runs?" + urlencode(query))
+        return call("GET", ("/workspace/history?" + urlencode({"kind": "trial", **query, **filters}))
+                    if filters else "/runs?" + urlencode(query))
 
     @server.tool(annotations=read_only, structured_output=True)
     def find_evidence(test: dict, candidates: list[str], fresh: bool = False) -> dict[str, Any]:
@@ -163,9 +168,15 @@ def create_server(client):
         return call("GET", path)
 
     @server.tool(annotations=read_only, structured_output=True)
-    def list_suites(limit: int = 25, before: str | None = None) -> dict[str, Any]:
-        """List this tenant's acceptance suites, with an older-page cursor."""
-        return call("GET", "/suites?" + urlencode({"limit": limit, **({"before": before} if before else {})}))
+    def list_suites(limit: int = 25, before: str | None = None, q: str = "",
+                    state: str | None = None, outcome: str | None = None,
+                    provider: str | None = None, since: str | None = None, until: str | None = None) -> dict[str, Any]:
+        """Search retained acceptance suites with filters and a cursor for older matching records."""
+        filters = {k: v for k, v in {"q": q, "state": state, "outcome": outcome,
+            "provider": provider, "since": since, "until": until}.items() if v}
+        query = {"limit": limit, **({"before": before} if before else {})}
+        return call("GET", ("/workspace/history?" + urlencode({"kind": "suite", **query, **filters}))
+                    if filters else "/suites?" + urlencode(query))
 
     @server.tool(annotations=write, structured_output=True)
     def cancel_suite(suite_id: str) -> dict[str, Any]:

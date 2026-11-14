@@ -90,3 +90,44 @@ an observed field path and your expected JSON value. Optional actions are explic
 JSON objects. It writes a validated scenario without contacting a provider. MCP adds
 `draft_trial` and `preview_suite` to the existing discovery/validation/execution flow. These are
 schema-guided helpers; business acceptance conditions remain supplied by the caller.
+
+## Search, reuse and operate
+
+**Run history** searches all retained records on the server, including records beyond the
+first page. Filter execution status separately from recorded acceptance, service and UTC date
+range. Pagination preserves filters. Recorded acceptance is a historical outcome, not a current
+CI/evidence gate; inspect validity, cleanup and observations before relying on it.
+
+**Use definition** copies retained suite/trial definitions into the builder. It creates no job,
+key or provider resource. Review, validate and explicitly run to request another execution.
+**Save template** explicitly stores a validated definition, including its supplied test data,
+in the tenant's private SQLite workspace. Templates survive browser/coordinator restarts and
+are listed under **Templates & baselines**. Names are unique per type; existing items are never
+silently replaced. Each tenant can save up to 100 templates and 100 baselines. Delete saved
+items there; tenant purge also removes them. Ordinary browser drafts remain memory-only.
+
+**Pin baseline** names a reference to a suite with a passing current evidence gate. Named
+references appear in release comparison even when the source is outside the first history page.
+They do not copy observations, extend retention, refresh expiry or override comparison rules.
+Deleted sources remain visibly unavailable; retain an explicit export when needed.
+
+Result screens put cases needing attention first, highlight failed/unavailable checks, and offer
+an attention-only view. Acceptance, operational reason codes, missing observations and cleanup
+remain distinct. Existing measured lifecycle/CPU/HTTP-attempt data is shown without inventing
+external model cost. Live monitoring reads a small progress revision; unchanged revisions do not
+reload full reports or redraw the page. Background tabs pause monitoring and resume when visible.
+
+**Operations** shows authenticated tenant aggregates: queue counts/oldest wait, unresolved cleanup,
+retained queue-report bytes and recent timeouts. Duration p95 covers the latest 100 terminal trials
+with completion timestamps, including queue and cleanup time. This is a bounded sample, not a
+production SLA. Storage excludes worker ledgers, exports and backups. No fixtures, credentials,
+provider endpoints or cross-tenant data appear in metrics. Snapshot reads perform no provider work.
+
+Saved templates are deliberately retained until explicit deletion or tenant purge; the seven-day
+raw-run retention does not silently delete user-saved definitions. They are included in private
+state snapshots. Protect their test data and remove templates you no longer need.
+
+REST exposes `/workspace/history`, `/workspace/metrics`, `/workspace/items`, explicit
+`POST /workspace/templates` and `POST /workspace/baselines`, and tenant-bound item read/delete.
+`GET /suites/{id}/progress` and `/runs/{id}/progress` expose metadata only. Existing run/suite
+contracts remain available. Browser writes, including deletion, require the same session/CSRF rules.

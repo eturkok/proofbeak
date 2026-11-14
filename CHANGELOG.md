@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Add tenant-scoped server history search across retained pages, with execution, recorded
+  acceptance, service and UTC date filters; index suite history ordering.
+- Poll bounded metadata revisions, pause hidden tabs, back off on errors and update only
+  changed result regions instead of redrawing the workspace on every timer tick.
+- Add explicit durable templates, result-to-definition reuse and named passing baselines,
+  with private read/delete, bounded storage and tenant-purge integration.
+- Put failing/missing conditions and cleanup issues first; expose existing lifecycle timings.
+- Add private operational queue, cleanup, retained-report size and sampled p95/timeout metrics.
+- Extend actual browser qualification to Chromium/Firefox/WebKit and keyboard-only sign-in,
+  plus durable reuse, deep history search, private operations and mobile views.
+- Document manual pilot collection separately; no human adoption or production-load claim.
+
+
 ## 0.8.1 — 2026-11-14
 
 - Apply the parliament-blue and orange brand palette throughout Studio: navigation, primary

@@ -1,5 +1,20 @@
 # Stability scope and qualification
 
+## Workspace optimization qualification
+
+The browser suite now runs on actual Chromium, Firefox and WebKit services/workers. It checks
+keyboard-only sign-in, explicit saved templates and named baselines across reload, definition
+reuse without execution, server search beyond the first history page and private operations,
+alongside the original execution/signing/mobile cases. This is automated browser qualification;
+it is not a complete accessibility audit or a substitute for a real-device/human pilot.
+
+Workspace regressions verify tenant isolation, literal/Unicode search, filtered pagination,
+invalid dates, stable metadata-only progress, unchanged provider execution counts, bounded
+saved items, cleanup-aware metrics, retention and tenant purge. Suite history uses the
+`(tenant, created_at, id)` index. Production throughput and latency gains require representative
+load measurements; query-plan improvement alone does not establish a speedup.
+
+
 ## 0.8.0 workspace and workflow qualification
 
 The supported deployment remains one coordinator with SQLite state. Browser, suite, connector

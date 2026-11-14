@@ -1468,3 +1468,13 @@ dialog::backdrop{
 .login-story .eyebrow{
   color:#ffad69
 }
+
+.history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:20px}
+.history-filters .field{margin:0}
+.condition-failed{background:#fff1ec}
+.condition-unavailable{background:#fff7e8}
+#detail-results>section{margin-bottom:20px}
+@media(max-width:760px){.history-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.history-filters{grid-template-columns:minmax(0,1fr)}.service-row{flex-wrap:wrap}}
+
+.sidebar{overflow-y:auto}

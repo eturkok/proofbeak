@@ -17,7 +17,10 @@ def main():
     from proofbeak.server import load_service
     from proofbeak.studio import StudioProviders, initialize
 
-    reports = Path('reports/workbench')
+    engine = os.environ.get('PROOFBEAK_BROWSER', 'chromium')
+    if engine not in {'chromium', 'firefox', 'webkit'}:
+        raise ValueError('Unsupported qualification browser')
+    reports = Path('reports/workbench' if engine == 'chromium' else 'reports/workbench-' + engine)
     reports.mkdir(parents=True, exist_ok=True)
     results = []
     with tempfile.TemporaryDirectory() as directory:
@@ -38,15 +41,18 @@ def main():
         assert server.started, 'Workspace server did not start'
         try:
             with sync_playwright() as playwright:
-                browser=playwright.chromium.launch()
+                browser=getattr(playwright,engine).launch()
                 context=browser.new_context(viewport={'width':1440,'height':1000},accept_downloads=True)
                 page=context.new_page()
                 errors=[]
                 page.on('pageerror',lambda error:errors.append(str(error)))
                 page.goto(f'http://127.0.0.1:{port}/ui/')
                 expect(page.get_by_role('heading',name='Welcome back.')).to_be_visible()
-                page.get_by_label('Access key',exact=True).fill(token)
-                page.get_by_role('button',name='Open workspace').click()
+                page.get_by_label('Access key',exact=True).focus()
+                page.keyboard.insert_text(token)
+                page.keyboard.press('Tab')
+                expect(page.get_by_role('button',name='Open workspace')).to_be_focused()
+                page.keyboard.press('Enter')
                 expect(page.get_by_role('heading',name='Your evidence workspace.')).to_be_visible()
                 assert page.evaluate('Object.keys(localStorage).length + Object.keys(sessionStorage).length')==0
                 assert token not in page.url and token not in page.content()
@@ -150,9 +156,53 @@ def main():
                 assert 'capability:another-sqlite' in service.packs('local')['providers']
                 results.append({'case':'local_owner_service_configuration_is_durable','passed':True})
 
+                # Saved definitions/baselines are explicit, durable, and opening them performs no writes.
+                page.get_by_role('button',name='Run history',exact=True).click()
+                page.get_by_label('Search history',exact=True).fill('Browser acceptance package')
+                page.get_by_role('button',name='Browser acceptance package',exact=True).click()
+                expect(page.locator('.badge.completed').first).to_be_visible()
+                page.get_by_role('button',name='Pin baseline',exact=True).click()
+                page.get_by_label('Baseline name',exact=True).fill('Browser release reference')
+                page.get_by_role('button',name='Save baseline',exact=True).click()
+                expect(page.get_by_role('dialog')).not_to_be_visible()
+                count=len(service.list_suites('local')['suites'])
+                page.get_by_role('button',name='Use definition',exact=True).click()
+                page.get_by_role('button',name='Save template',exact=True).click()
+                page.get_by_label('Template name',exact=True).fill('Browser reusable template')
+                page.get_by_role('button',name='Save template',exact=True).click()
+                expect(page.get_by_role('dialog')).not_to_be_visible()
+                page.on('dialog',lambda dialog:dialog.accept())
+                page.reload()
+                page.get_by_role('button',name='Templates & baselines',exact=True).click()
+                expect(page.get_by_text('Browser reusable template',exact=True)).to_be_visible()
+                expect(page.get_by_text('Browser release reference',exact=True)).to_be_visible()
+                page.get_by_role('button',name='Use template',exact=True).click()
+                expect(page.get_by_label('Package name',exact=True)).to_have_value('Browser acceptance package')
+                assert len(service.list_suites('local')['suites'])==count
+                results.append({'case':'explicit_durable_templates_named_baselines_and_definition_reuse','passed':True})
+
+                # Seed newer cancelled metadata, then locate the old completed result across all pages.
+                for number in range(28):
+                    definition=service.get_suite('local',first)['definition']
+                    definition['name']='Newer search fixture '+str(number)
+                    queued=service.submit_suite('local',definition,'browser-search-'+str(number))['suite_id']
+                    service.cancel_suite('local',queued)
+                page.get_by_role('button',name='Run history',exact=True).click()
+                page.get_by_label('Search history',exact=True).fill('Browser acceptance package')
+                assert first not in [s['suite_id'] for s in service.list_suites('local')['suites']]
+                with page.expect_response(lambda response:'/workspace/history?' in response.url and 'outcome=pass' in response.url) as searched:
+                    page.get_by_label('Recorded acceptance',exact=True).select_option('pass')
+                assert first in [s['suite_id'] for s in searched.value.json()['suites']]
+                expect(page.get_by_role('button',name='Browser acceptance package',exact=True)).to_be_visible()
+                page.get_by_role('button',name='Operations',exact=True).click()
+                expect(page.get_by_role('heading',name='Understand the workload.',exact=True)).to_be_visible()
+                expect(page.get_by_text('Queue + execution p95',exact=True)).to_be_visible()
+                page.screenshot(path=str(reports/'operations-desktop.png'),full_page=True)
+                results.append({'case':'server_history_search_beyond_first_page_and_private_operational_metrics','passed':True})
+
                 # Mobile pages retain a local scrolling table without overflowing the viewport.
                 page.set_viewport_size({'width':390,'height':844})
-                for name in ('Run history','Compare releases','Verify evidence','Overview'):
+                for name in ('Run history','Compare releases','Verify evidence','Templates & baselines','Operations','Overview'):
                     page.get_by_role('button',name='Toggle navigation',exact=True).click()
                     page.get_by_role('button',name=name,exact=True).click()
                     geometry=page.evaluate('''() => ({width:innerWidth,scroll:document.documentElement.scrollWidth,
@@ -197,7 +247,7 @@ def main():
             server.should_exit=True
             thread.join(timeout=10)
             assert not thread.is_alive(),'Workspace server did not shut down'
-    output={'suite':'proofbeak.workbench.browser.v1','cases':results,'passed':all(c['passed'] for c in results)}
+    output={'suite':'proofbeak.workbench.browser.v1','browser':engine,'cases':results,'passed':all(c['passed'] for c in results)}
     (reports/'qualification.json').write_text(json.dumps(output,indent=2)+'\n')
     print('PROOFBEAK_WORKBENCH='+json.dumps(output))
 

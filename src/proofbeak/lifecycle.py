@@ -316,6 +316,7 @@ class EvidenceLifecycle:
                 db.execute("DELETE FROM suite_members WHERE suite_id IN (SELECT id FROM acceptance_suites WHERE tenant=?)", (tenant,))
                 db.execute("DELETE FROM acceptance_suites WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM suite_tombstones WHERE tenant=?", (tenant,))
+                db.execute("DELETE FROM workspace_items WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM jobs WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM tombstones WHERE tenant=?", (tenant,))
                 db.execute("DELETE FROM audit WHERE tenant=?", (tenant,))

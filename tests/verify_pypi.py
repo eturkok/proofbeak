@@ -103,7 +103,7 @@ def verify(manifest):
         subprocess.run([str(python), "-c", "from importlib.resources import files; "
             "from pathlib import Path; from proofbeak.studio import initialize; "
             "assets=files('proofbeak').joinpath('web'); "
-            "assert all(assets.joinpath(n).is_file() for n in ('index.html','app.js','style.css','mark.svg')); "
+            "assert all(assets.joinpath(n).is_file() for n in ('index.html','app.js','workspace.js','style.css','mark.svg')); "
             "p,t=initialize(Path('studio')); assert t and p.is_file(); "
             "assert initialize(Path('studio')) == (p,t)"], cwd=root, env=environment, check=True)
     return {"project_url": f"https://pypi.org/project/{name}/{version}/", "version": version,

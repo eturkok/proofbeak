@@ -40,7 +40,7 @@ def inspect_artifacts(directory):
                 assert all("extra ==" in requirement for requirement in metadata.get_all("Requires-Dist", []))
                 assert set(metadata.get_all("Provides-Extra", [])) == set(project["optional-dependencies"])
                 assert "Documentation, https://github.com/eturkok/proofbeak/blob/main/docs/installation.md" in metadata.get_all("Project-URL")
-                assert {"proofbeak/web/index.html", "proofbeak/web/app.js", "proofbeak/web/style.css", "proofbeak/web/mark.svg"} <= set(names)
+                assert {"proofbeak/web/index.html", "proofbeak/web/app.js", "proofbeak/web/workspace.js", "proofbeak/web/style.css", "proofbeak/web/mark.svg"} <= set(names)
         else:
             with tarfile.open(path) as archive:
                 names = archive.getnames()
@@ -178,7 +178,7 @@ def installation(directory, agents):
         assert signed["signature_valid"] and signed["content_integrity_valid"] and signed["acceptance_gate"] == "pass"
         run([python, "-I", "-c", "from importlib.resources import files; from pathlib import Path; "
              "from proofbeak.studio import initialize; assets=files('proofbeak').joinpath('web'); "
-             "assert all(assets.joinpath(n).is_file() for n in ('index.html','app.js','style.css','mark.svg')); "
+             "assert all(assets.joinpath(n).is_file() for n in ('index.html','app.js','workspace.js','style.css','mark.svg')); "
              "p,t=initialize(Path('studio')); assert t and p.is_file(); assert initialize(Path('studio')) == (p,t)"])
         result.update(signed_bundle="pass", studio_setup="pass", workspace_assets="pass")
         (work / "providers.json").write_text(json.dumps({"scenario:filesystem": {}, "capability:sqlite": {"kind":"sqlite","connection":{}}}))

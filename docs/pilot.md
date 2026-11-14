@@ -164,3 +164,17 @@ Idempotent report retrieval preserves the original measurements. External agent 
 agent decision latency and LLM cost are outside the worker; their trial report fields remain
 null. Enter actual external measurements in the paired experiment rather than treating worker
 wall time as end-to-end agent cost. No measurement changes the acceptance verdict.
+
+## Workspace usability session
+
+Use the existing `proofbeak-pilot init` files for a real session; retain pseudonymous IDs and
+actual timestamps. Ask each of three consenting developers to configure their own disposable
+service, define a condition, produce and explain their first report, save a template and create
+a second definition from it. Record where assistance was needed and whether they correctly
+distinguished failed acceptance, unavailable evidence and pending cleanup. Check whether they
+can find that report after at least 25 newer records and choose a named comparison reference.
+
+Measure first-report elapsed time and time to the second independently authored condition.
+Collect the actual fourteen-day return observation later. Export their scenario/evidence only
+with their consent; the workspace does not silently track these sessions or send invitations.
+The shipped synthetic/browser checks leave these human-pilot gates open.
