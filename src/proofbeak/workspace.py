@@ -35,6 +35,7 @@ class WorkspaceService:
         with self._db() as db:
             db.executescript("""
                 CREATE INDEX IF NOT EXISTS suite_history ON acceptance_suites(tenant,created_at,id);
+                CREATE INDEX IF NOT EXISTS job_completion ON jobs(tenant,completed_at,id);
                 CREATE TABLE IF NOT EXISTS workspace_items (
                     id TEXT PRIMARY KEY, tenant TEXT NOT NULL, kind TEXT NOT NULL, name TEXT NOT NULL,
                     document TEXT, source_id TEXT, created_at TEXT NOT NULL, UNIQUE(tenant,kind,name));
@@ -212,6 +213,6 @@ class WorkspaceService:
         return {"scope": "authenticated_tenant", "generated_at": now.isoformat(), "jobs": counts,
                 "queued_suites": pending_suites[0], "oldest_queue_seconds": max(0, (now - datetime.fromisoformat(oldest)).total_seconds()) if oldest else 0,
                 "cleanup_pending_runs": cleanup, "retained_report_bytes": sizes, "sample_size": len(rows),
-                "sample_limit": 100, "recent_timeout_runs": sum("timeout" in (r["reason"] or "") or "deadline" in (r["reason"] or "") for r in rows),
+                "sample_limit": 100, "recent_timeout_runs": sum(any(code in (r["reason"] or "") for code in ("timeout", "timed_out", "deadline")) for r in rows),
                 "p95_queue_and_run_seconds": durations[max(0, math.ceil(len(durations) * .95) - 1)] if durations else None,
                 "maintenance": "deferred" if self.maintenance_deferred else "ok"}

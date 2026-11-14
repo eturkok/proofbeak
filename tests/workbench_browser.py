@@ -169,7 +169,7 @@ def main():
                 page.get_by_role('button',name='Use definition',exact=True).click()
                 page.get_by_role('button',name='Save template',exact=True).click()
                 page.get_by_label('Template name',exact=True).fill('Browser reusable template')
-                page.get_by_role('button',name='Save template',exact=True).click()
+                page.get_by_role('dialog').get_by_role('button',name='Save template',exact=True).click()
                 expect(page.get_by_role('dialog')).not_to_be_visible()
                 page.on('dialog',lambda dialog:dialog.accept())
                 page.reload()

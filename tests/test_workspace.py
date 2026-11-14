@@ -123,6 +123,10 @@ class WorkspaceTests(unittest.TestCase):
         self.assertNotIn("Secret fixture name", json.dumps(metrics))
         self.assertNotIn("Foreign", json.dumps(metrics))
         self.assertIsNotNone(metrics["p95_queue_and_run_seconds"])
+        with self.service._db() as db:
+            identifier = db.execute("SELECT id FROM jobs WHERE tenant='a' LIMIT 1").fetchone()[0]
+            db.execute("UPDATE jobs SET state='interrupted',reason='trial_timed_out',result=NULL WHERE id=?", (identifier,))
+        self.assertEqual(self.service.workspace_metrics("a")["recent_timeout_runs"], 1)
 
     def test_purge_removes_explicitly_saved_items_only_for_target_tenant(self):
         self.service.save_workspace_item("a", "template", "A", example_suite())
