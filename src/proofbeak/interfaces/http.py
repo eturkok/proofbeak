@@ -29,6 +29,16 @@ class SuiteRequest(BaseModel):
     suite: dict
 
 
+class TemplateRequest(SuiteRequest):
+    name: str = Field(min_length=1, max_length=80)
+
+
+class BaselineRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    name: str = Field(min_length=1, max_length=80)
+    suite_id: str = Field(pattern=r"^[a-f0-9]{32}$")
+
+
 class ComparisonRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     baseline: str
@@ -210,6 +220,46 @@ def create_app(service: TrialService, background=True, studio_providers=None):
     @app.get("/packs")
     def packs(owner: str = Depends(tenant)):
         return service.packs(owner)
+
+    @app.get("/workspace/history")
+    def workspace_history(owner: str = Depends(tenant), kind: str = "suite",
+                          limit: int = Query(default=25, ge=1, le=100), before: str | None = None,
+                          q: str = Query(default="", max_length=120), state: str | None = None,
+                          outcome: str | None = None, provider: str | None = None,
+                          since: str | None = None, until: str | None = None):
+        return service.search_history(owner, kind, limit, before, q, state, outcome, provider, since, until)
+
+    @app.get("/workspace/metrics")
+    def workspace_metrics(owner: str = Depends(tenant)):
+        return service.workspace_metrics(owner)
+
+    @app.get("/workspace/items")
+    def workspace_items(kind: str, owner: str = Depends(tenant)):
+        return service.list_workspace_items(owner, kind)
+
+    @app.post("/workspace/templates", status_code=201)
+    def save_template(body: TemplateRequest, owner: str = Depends(tenant)):
+        return service.save_workspace_item(owner, "template", body.name, definition=body.suite)
+
+    @app.post("/workspace/baselines", status_code=201)
+    def save_baseline(body: BaselineRequest, owner: str = Depends(tenant)):
+        return service.save_workspace_item(owner, "baseline", body.name, source_id=body.suite_id)
+
+    @app.get("/workspace/items/{identifier}")
+    def workspace_item(identifier: str, owner: str = Depends(tenant)):
+        return service.workspace_item(owner, identifier)
+
+    @app.delete("/workspace/items/{identifier}")
+    def delete_workspace_item(identifier: str, owner: str = Depends(tenant)):
+        return service.workspace_item(owner, identifier, delete=True)
+
+    @app.get("/suites/{suite_id}/progress")
+    def suite_progress(suite_id: str, owner: str = Depends(tenant)):
+        return service.workspace_progress(owner, suite_id)
+
+    @app.get("/runs/{run_id}/progress")
+    def run_progress(run_id: str, owner: str = Depends(tenant)):
+        return service.workspace_progress(owner, run_id, "trial")
 
     @app.post("/suites/validate")
     def validate_suite(body: SuiteRequest, owner: str = Depends(tenant)):

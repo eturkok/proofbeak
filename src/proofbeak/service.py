@@ -24,6 +24,7 @@ from proofbeak.observer import OBSERVER_VERSION
 from proofbeak.packs import builtins
 from proofbeak.recovery import file_lock
 from proofbeak.validation import candidate_issues, issue_from, validation_result
+from proofbeak.workspace import WorkspaceService
 
 
 class ServiceError(Exception):
@@ -39,7 +40,7 @@ class Tenant:
     providers: dict
 
 
-class TrialService(EvidenceLifecycle, SuiteService):
+class TrialService(EvidenceLifecycle, SuiteService, WorkspaceService):
     def __init__(self, root, tenants, pending_limit=8, executor=None):
         self.root = Path(root).resolve()
         if (self.root / ".restore-incomplete").exists():
@@ -80,6 +81,7 @@ class TrialService(EvidenceLifecycle, SuiteService):
                         created_at TEXT NOT NULL, UNIQUE(tenant, client_key))""")
                 self._init_lifecycle()
                 self._init_suites()
+                self._init_workspace()
         except ValueError as error:
             if str(error) == "offline_state_required":
                 raise RuntimeError("another service worker owns this state directory") from None
@@ -89,6 +91,7 @@ class TrialService(EvidenceLifecycle, SuiteService):
     def _db(self):
         db = sqlite3.connect(self.database, timeout=10)
         db.row_factory = sqlite3.Row
+        db.create_function("casefold", 1, lambda value: str(value).casefold(), deterministic=True)
         try:
             db.execute("PRAGMA secure_delete=ON")
             with db:

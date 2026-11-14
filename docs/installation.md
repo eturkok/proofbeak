@@ -14,7 +14,7 @@ Publication is followed by a hash-pinned public-index installation check.
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install proofbeak==0.8.0
+python -m pip install proofbeak==0.8.1
 proofbeak --version
 proofbeak example --output scenario.json
 proofbeak validate scenario.json --candidate scenario:filesystem --json
@@ -35,7 +35,7 @@ SHA-256 values. CI builds the wheel from the source distribution and tests that 
 outside the checkout on Python 3.11, 3.12, 3.13 and 3.14. In an activated virtual environment:
 
 ```bash
-python -m pip install --no-index --no-deps dist/proofbeak-0.8.0-py3-none-any.whl
+python -m pip install --no-index --no-deps dist/proofbeak-0.8.1-py3-none-any.whl
 ```
 
 The wheel can also be mirrored in an operator-owned package index.
@@ -45,7 +45,7 @@ The wheel can also be mirrored in an operator-owned package index.
 For `scenario.v2` and all supported connector dependencies, install:
 
 ```bash
-python -m pip install 'proofbeak[agents,connectors,postgres]==0.8.0'
+python -m pip install 'proofbeak[agents,connectors,postgres]==0.8.1'
 ```
 
 Use only the extras your deployment needs. PostgreSQL requires its optional driver; SQLite,
@@ -55,7 +55,7 @@ use the MCP SDK. Follow [capability setup and examples](capabilities.md) for ope
 Install the interface extra:
 
 ```bash
-python -m pip install 'proofbeak[agents]==0.8.0'
+python -m pip install 'proofbeak[agents]==0.8.1'
 ```
 
 Save this operator-owned map as `providers.json`:
@@ -94,7 +94,7 @@ runtime dependencies. The `tested-container-image` artifact contains a Docker ar
 
 ```bash
 sha256sum --check SHA256SUMS
-docker load --input proofbeak-0.8.0.tar.gz
+docker load --input proofbeak-0.8.1.tar.gz
 ```
 
 On macOS, use `shasum -a 256 --check SHA256SUMS` for the checksum verification.
@@ -103,7 +103,7 @@ After loading, the image tag is `proofbeak:distribution`. Follow [deployment con
 for the private configuration mount, writable state volume and service networking.
 The image is a Linux amd64 build; additional architectures have not been qualified.
 
-The published registry image is `ghcr.io/eturkok/proofbeak:0.8.0`.
+The published registry image is `ghcr.io/eturkok/proofbeak:0.8.1`.
 Registry visibility and pull authentication follow the package owner's settings. Local archive
 use does not require registry credentials. Prefer a recorded digest for deployments.
 

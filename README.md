@@ -22,7 +22,7 @@ Use Python 3.11+ on Linux or macOS, in a virtual environment:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install 'proofbeak[agents,connectors]==0.8.0'
+python -m pip install 'proofbeak[agents,connectors]==0.8.1'
 proofbeak studio
 ```
 
@@ -57,7 +57,7 @@ The core CLI has no third-party Python dependencies. This suite tests three valu
 actual disposable local files:
 
 ```bash
-python -m pip install proofbeak==0.8.0
+python -m pip install proofbeak==0.8.1
 proofbeak suite example --output acceptance.json
 proofbeak suite validate acceptance.json
 proofbeak suite run acceptance.json --key first-suite \

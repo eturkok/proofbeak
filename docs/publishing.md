@@ -5,7 +5,7 @@ checks their metadata/inventory, runs clean core and actual REST/MCP installatio
 Python versions, and builds/tests a rootless container from that wheel. PR and ordinary main
 pushes produce downloadable artifacts. A version increase on main publishes them after checks.
 
-The package version is 0.8.0. A registry release has not happened merely because these files
+The package version is 0.8.1. A registry release has not happened merely because these files
 or a main-branch commit exist. Check the publishing jobs and registry before announcing it.
 
 ## One-time PyPI account setup
@@ -37,7 +37,7 @@ and [existing project](https://docs.pypi.org/trusted-publishers/adding-a-publish
 
 Merging an increased version into `main` starts publication automatically after checks.
 For a deliberate retry or a separately selected target, open **Actions → Distribution and publishing → Run workflow**.
-Choose `main`, enter the exact version `0.8.0`, and enable `publish_pypi`. Enable
+Choose `main`, enter the exact version `0.8.1`, and enable `publish_pypi`. Enable
 `publish_image` as well to push the tested image to GHCR. The flags default to false.
 
 The workflow rebuilds and rechecks the selected source before publishing. Publication jobs
@@ -64,7 +64,7 @@ rebuild different bytes under a version already partly or fully published.
 ## Verify before announcing
 
 - Confirm successful publisher jobs, not just successful builds.
-- Inspect <https://pypi.org/project/proofbeak/0.8.0/> and install that exact release into a new venv.
+- Inspect <https://pypi.org/project/proofbeak/0.8.1/> and install that exact release into a new venv.
 - Compare downloaded wheel/source hashes with the workflow's `manifest.json`.
 - Pull the versioned image, record its registry digest and run the deployment smoke checks.
 

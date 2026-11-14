@@ -113,6 +113,38 @@ class WorkflowHttpTests(unittest.TestCase):
             rejected = self.client.post("/bundles/verify", json={"bundle": corrupted, "public_key": document}, headers=self.headers)
             self.assertEqual(rejected.status_code, 422)
 
+    def test_private_workspace_filters_progress_templates_metrics_and_baselines(self):
+        suite_id = self.submit()
+        progress = self.client.get(f"/suites/{suite_id}/progress", headers=self.headers)
+        self.assertEqual(progress.status_code, 200)
+        self.assertNotIn("definition", progress.json())
+        saved = self.client.post("/workspace/templates", json={"name": "Reusable", "suite": example_suite()}, headers=self.headers)
+        self.assertEqual(saved.status_code, 201, saved.text)
+        identifier = saved.json()["id"]
+        self.assertEqual(self.client.get("/workspace/items?kind=template", headers=self.headers).json()["items"][0]["id"], identifier)
+        self.assertEqual(self.client.get("/workspace/items/" + identifier, headers=self.headers).json()["definition"], example_suite())
+        while self.service.process_next():
+            pass
+        found = self.client.get("/workspace/history", params={"outcome": "pass", "q": example_suite()["name"]}, headers=self.headers)
+        self.assertEqual(found.json()["suites"][0]["suite_id"], suite_id)
+        baseline = self.client.post("/workspace/baselines", json={"name": "Release reference", "suite_id": suite_id}, headers=self.headers)
+        self.assertEqual(baseline.status_code, 201, baseline.text)
+        metrics = self.client.get("/workspace/metrics", headers=self.headers)
+        self.assertEqual(metrics.json()["jobs"]["completed"], 3)
+        self.assertEqual(self.client.delete("/workspace/items/" + identifier, headers=self.headers).status_code, 200)
+        self.assertFalse(self.service.process_next())
+
+    def test_workspace_requires_authentication_and_browser_csrf_on_saved_item_writes(self):
+        for path in ("/workspace/metrics", "/workspace/history", "/workspace/items?kind=template"):
+            self.assertEqual(self.client.get(path).status_code, 401)
+        self.assertEqual(self.client.get("/workspace/history?since=invalid", headers=self.headers).status_code, 422)
+        login = self.client.post('/ui/login', json={'token': self.token}, headers={'Origin': 'http://testserver'})
+        payload = {"name": "Reusable", "suite": example_suite()}
+        self.assertEqual(self.client.post('/workspace/templates', json=payload).status_code, 403)
+        saved = self.client.post('/workspace/templates', json=payload, headers={'X-Proofbeak-CSRF': login.json()['csrf']})
+        self.assertEqual(saved.status_code, 201)
+        self.assertEqual(self.client.delete('/workspace/items/' + saved.json()['id']).status_code, 403)
+
 
 if __name__ == "__main__":
     if os.environ.get("PROOFBEAK_REQUIRE_INTERFACES") and not AVAILABLE:
